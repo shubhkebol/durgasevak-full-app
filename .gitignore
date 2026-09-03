@@ -1,13 +1,17 @@
+# Virtual environments
 venv/
-__pycache__/
-*.pyc
-.env
-backups/
-temp/
-*.db
-.env
 .venv/
-venv/
+
+# Environment variables
+.env
+
+# Python cache
 __pycache__/
 *.pyc
+
+# Database and backups
+*.db
 backups/
+
+# Temporary files
+temp/
