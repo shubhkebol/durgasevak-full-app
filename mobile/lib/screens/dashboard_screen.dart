@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../repositories/dashboard_repository.dart';
 import '../services/auth_service.dart';
+import '../services/file_intent_service.dart';
 import '../widgets/app_background.dart';
+import 'committee_screen.dart';
 import 'data_sync_screen.dart';
 import 'donations_screen.dart';
 import 'expenses_screen.dart';
@@ -13,7 +15,17 @@ import 'reports_screen.dart';
 class DashboardScreen extends StatefulWidget {
   final AuthUser user;
 
-  const DashboardScreen({super.key, required this.user});
+  /// Backup file received through Android file sharing.
+  ///
+  /// This is normally populated when the app is opened by tapping a
+  /// .durgasevak backup file while the user is not already logged in.
+  final String? initialBackupPath;
+
+  const DashboardScreen({
+    super.key,
+    required this.user,
+    this.initialBackupPath,
+  });
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -25,17 +37,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
   DashboardSummary? _summary;
   List<Map<String, dynamic>> _recentDonations = [];
   List<Map<String, dynamic>> _recentExpenses = [];
+
   bool _isLoading = true;
+  bool _incomingFileHandled = false;
 
   @override
   void initState() {
     super.initState();
+
+    FileIntentService.incomingFile.addListener(_handleIncomingFile);
+
     _loadDashboard();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleInitialBackup();
+      _handleIncomingFile();
+    });
+  }
+
+  @override
+  void dispose() {
+    FileIntentService.incomingFile.removeListener(_handleIncomingFile);
+
+    super.dispose();
   }
 
   Future<void> _loadDashboard() async {
     if (mounted) {
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+      });
     }
 
     try {
@@ -54,7 +85,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+      });
 
       ScaffoldMessenger.of(
         context,
@@ -62,8 +95,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  void _handleInitialBackup() {
+    if (_incomingFileHandled) return;
+
+    final path = widget.initialBackupPath;
+
+    if (path == null || path.trim().isEmpty) {
+      return;
+    }
+
+    _incomingFileHandled = true;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            DataSyncScreen(user: widget.user, incomingBackupPath: path),
+      ),
+    );
+  }
+
+  void _handleIncomingFile() {
+    if (!mounted) return;
+    if (_incomingFileHandled) return;
+
+    final path = FileIntentService.incomingFile.value;
+
+    if (path == null || path.trim().isEmpty) {
+      return;
+    }
+
+    if (!widget.user.isViewer) {
+      FileIntentService.clearIncomingFile();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Backup import is available only for Viewer accounts.'),
+        ),
+      );
+
+      return;
+    }
+
+    _incomingFileHandled = true;
+
+    FileIntentService.clearIncomingFile();
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            DataSyncScreen(user: widget.user, incomingBackupPath: path),
+      ),
+    );
+  }
+
   Future<void> _open(Widget screen) async {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+
     await _loadDashboard();
   }
 
@@ -71,13 +158,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.of(context).pop();
   }
 
-  String _money(double value) => '₹${value.toStringAsFixed(2)}';
+  String _money(double value) {
+    return '₹${value.toStringAsFixed(2)}';
+  }
 
   String _formatDate(String? value) {
-    if (value == null || value.trim().isEmpty) return '-';
+    if (value == null || value.trim().isEmpty) {
+      return '-';
+    }
 
     final parsed = DateTime.tryParse(value);
-    if (parsed == null) return value;
+
+    if (parsed == null) {
+      return value;
+    }
 
     return '${parsed.day.toString().padLeft(2, '0')}/'
         '${parsed.month.toString().padLeft(2, '0')}/'
@@ -87,11 +181,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _donorName(Map<String, dynamic> row) {
     if (row['donor_type'] == 'other') {
       final name = row['donor_name'] as String?;
-      return name == null || name.trim().isEmpty ? 'Other Donor' : name;
+
+      if (name == null || name.trim().isEmpty) {
+        return 'Other Donor';
+      }
+
+      return name;
     }
 
     final name = row['member_name'] as String?;
-    return name == null || name.trim().isEmpty ? 'Member' : name;
+
+    if (name == null || name.trim().isEmpty) {
+      return 'Member';
+    }
+
+    return name;
   }
 
   @override
@@ -176,9 +280,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ClipRRect(
           borderRadius: BorderRadius.circular(14),
           child: Image.asset(
-            widget.user.isAdmin
-                ? 'assets/images/Admin.jpeg'
-                : 'assets/images/Durgasevak.jpeg',
+            'assets/images/durgasevak_watermark.jpg',
             width: 58,
             height: 58,
             fit: BoxFit.cover,
@@ -323,13 +425,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         () => _open(MohimScreen(user: widget.user)),
       ),
       _Module(
+        'Committee',
+        Icons.groups,
+        () => _open(CommitteeScreen(user: widget.user)),
+      ),
+      _Module(
         'Reports',
         Icons.assessment,
         () => _open(ReportsScreen(user: widget.user)),
       ),
       _Module(
         'Data Sync',
-        Icons.cloud_sync,
+        Icons.sync,
         () => _open(DataSyncScreen(user: widget.user)),
       ),
     ];
@@ -358,6 +465,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           itemBuilder: (_, index) {
             final module = modules[index];
+
             return Card(
               margin: EdgeInsets.zero,
               clipBehavior: Clip.antiAlias,
@@ -389,6 +497,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       emptyText: 'No recent donations',
       children: _recentDonations.map((row) {
         final amount = (row['amount'] as num?)?.toDouble() ?? 0;
+
         final monthly = (row['monthly_donation'] as int? ?? 0) == 1;
 
         return ListTile(
@@ -426,7 +535,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       emptyText: 'No recent expenses',
       children: _recentExpenses.map((row) {
         final amount = (row['amount'] as num?)?.toDouble() ?? 0;
+
         final category = row['category'] as String?;
+
         return ListTile(
           leading: const CircleAvatar(child: Icon(Icons.receipt_long)),
           title: Text(

@@ -18,19 +18,13 @@ class AuthUser {
 class AuthService {
   final DatabaseService _databaseService = DatabaseService.instance;
 
-  Future<AuthUser?> login(
-    String username,
-    String password,
-  ) async {
+  Future<AuthUser?> login(String username, String password) async {
     // Temporary V1 authentication.
     //
     // Passwords will be moved to a proper local credential
     // mechanism before production release.
 
-    const passwords = {
-      'Durgasevak': 'Durgasevak',
-      'Admin': 'Chatrapati',
-    };
+    const passwords = {'Durgasevak': 'Durgasevak', 'Admin': 'Chatrapati'};
 
     if (passwords[username] != password) {
       return null;

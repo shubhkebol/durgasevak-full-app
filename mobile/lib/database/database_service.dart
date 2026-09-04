@@ -42,7 +42,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: _createDatabase,
       onUpgrade: _upgradeDatabase,
     );
@@ -112,6 +112,16 @@ class DatabaseService {
         visitor_name TEXT,
         created_at TEXT NOT NULL,
         UNIQUE(mohim_id, member_id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE committee (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        position TEXT NOT NULL UNIQUE,
+        member_id INTEGER NOT NULL UNIQUE,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
       )
     ''');
 
@@ -210,6 +220,18 @@ class DatabaseService {
           visitor_name TEXT,
           created_at TEXT NOT NULL,
           UNIQUE(mohim_id, member_id)
+        )
+      ''');
+    }
+
+    if (oldVersion < 8) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS committee (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          position TEXT NOT NULL UNIQUE,
+          member_id INTEGER NOT NULL UNIQUE,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
         )
       ''');
     }

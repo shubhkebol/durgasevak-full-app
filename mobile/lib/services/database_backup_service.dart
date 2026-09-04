@@ -22,6 +22,21 @@ class DatabaseBackupService {
     final databasePath =
         await _databaseService.databasePath;
 
+    final db = await _databaseService.database;
+
+    final now =
+        DateTime.now().toUtc().toIso8601String();
+
+    await db.insert(
+      'app_metadata',
+      {
+        'key': 'local_data_version',
+        'value': now,
+      },
+      conflictAlgorithm:
+          ConflictAlgorithm.replace,
+    );
+
     final backupDirectory = Directory(
       path.join(
         path.dirname(databasePath),
@@ -39,7 +54,7 @@ class DatabaseBackupService {
 
     final backupPath = path.join(
       backupDirectory.path,
-      'durgasevak_backup_$timestamp.db',
+      'Durgasevak_Backup_$timestamp.durgasevak',
     );
 
     await _databaseService.closeDatabase();
@@ -61,23 +76,39 @@ class DatabaseBackupService {
     }
   }
 
-  Future<void> restoreBackup(
+  Future<String> validateBackup(
     String backupPath,
   ) async {
     final sourceFile = File(backupPath);
 
     if (!await sourceFile.exists()) {
       throw Exception(
-        'Downloaded backup file was not found.',
+        'Selected backup file was not found.',
       );
     }
 
-    await _validateDatabase(sourceFile.path);
+    return _validateDatabase(sourceFile.path);
+  }
+
+  Future<String> restoreBackup(
+    String backupPath,
+  ) async {
+    final sourceFile = File(backupPath);
+
+    if (!await sourceFile.exists()) {
+      throw Exception(
+        'Selected backup file was not found.',
+      );
+    }
+
+    final backupVersion =
+        await _validateDatabase(sourceFile.path);
 
     final databasePath =
         await _databaseService.databasePath;
 
-    final currentDatabase = File(databasePath);
+    final currentDatabase =
+        File(databasePath);
 
     final temporaryDatabase =
         File('$databasePath.sync');
@@ -113,6 +144,8 @@ class DatabaseBackupService {
       if (await oldDatabase.exists()) {
         await oldDatabase.delete();
       }
+
+      return backupVersion;
     } catch (_) {
       if (await currentDatabase.exists()) {
         await currentDatabase.delete();
@@ -134,7 +167,25 @@ class DatabaseBackupService {
     }
   }
 
-  Future<void> _validateDatabase(
+  Future<String?> getLocalDataVersion() async {
+    final db = await _databaseService.database;
+
+    final rows = await db.query(
+      'app_metadata',
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: ['local_data_version'],
+      limit: 1,
+    );
+
+    if (rows.isEmpty) {
+      return null;
+    }
+
+    return rows.first['value'] as String?;
+  }
+
+  Future<String?> getBackupDataVersion(
     String databasePath,
   ) async {
     Database? database;
@@ -145,17 +196,105 @@ class DatabaseBackupService {
         readOnly: true,
       );
 
+      final rows = await database.query(
+        'app_metadata',
+        columns: ['value'],
+        where: 'key = ?',
+        whereArgs: ['local_data_version'],
+        limit: 1,
+      );
+
+      if (rows.isEmpty) {
+        return null;
+      }
+
+      return rows.first['value'] as String?;
+    } finally {
+      await database?.close();
+    }
+  }
+
+  Future<bool> isBackupNewer(
+    String backupPath,
+  ) async {
+    final backupVersion =
+        await validateBackup(backupPath);
+
+    final localVersion =
+        await getLocalDataVersion();
+
+    if (localVersion == null ||
+        localVersion.trim().isEmpty) {
+      return true;
+    }
+
+    final backupDate =
+        DateTime.tryParse(backupVersion);
+
+    final localDate =
+        DateTime.tryParse(localVersion);
+
+    if (backupDate == null ||
+        localDate == null) {
+      throw Exception(
+        'Unable to compare backup data versions.',
+      );
+    }
+
+    return backupDate.isAfter(localDate);
+  }
+
+  Future<String> _validateDatabase(
+    String databasePath,
+  ) async {
+    Database? database;
+
+    try {
+      database = await openDatabase(
+        databasePath,
+        readOnly: true,
+      );
+
+      final versionResult =
+          await database.rawQuery(
+        'PRAGMA user_version',
+      );
+
+      if (versionResult.isEmpty) {
+        throw Exception(
+          'Invalid Durgasevak backup: '
+          'unable to read database version.',
+        );
+      }
+
+      final version =
+          (versionResult.first['user_version']
+                      as num?)
+                  ?.toInt() ??
+              0;
+
+      if (version < 8) {
+        throw Exception(
+          'This backup is from an older Durgasevak '
+          'version. Please export the data again '
+          'from the latest Admin app.',
+        );
+      }
+
       const requiredTables = [
         'users',
         'members',
         'donations',
         'expenses',
         'mohims',
+        'mohim_attendance',
+        'committee',
         'app_metadata',
       ];
 
       for (final table in requiredTables) {
-        final result = await database.rawQuery(
+        final result =
+            await database.rawQuery(
           '''
           SELECT name
           FROM sqlite_master
@@ -173,6 +312,35 @@ class DatabaseBackupService {
           );
         }
       }
+
+      final metadataRows =
+          await database.query(
+        'app_metadata',
+        columns: ['value'],
+        where: 'key = ?',
+        whereArgs: ['local_data_version'],
+        limit: 1,
+      );
+
+      if (metadataRows.isEmpty) {
+        throw Exception(
+          'Invalid Durgasevak backup: '
+          'data version information is missing.',
+        );
+      }
+
+      final versionValue =
+          metadataRows.first['value'] as String?;
+
+      if (versionValue == null ||
+          DateTime.tryParse(versionValue) == null) {
+        throw Exception(
+          'Invalid Durgasevak backup: '
+          'data version information is invalid.',
+        );
+      }
+
+      return versionValue;
     } finally {
       await database?.close();
     }

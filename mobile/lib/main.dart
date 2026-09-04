@@ -3,11 +3,20 @@ import 'package:flutter/material.dart';
 import 'database/database_service.dart';
 import 'screens/dashboard_screen.dart';
 import 'services/auth_service.dart';
+import 'services/file_intent_service.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await DatabaseService.instance.database;
+
+  final initialFile = await FileIntentService.getInitialFile();
+
+  if (initialFile != null && initialFile.trim().isNotEmpty) {
+    FileIntentService.incomingFile.value = initialFile;
+  }
+
+  FileIntentService.listen();
 
   runApp(const DurgasevakApp());
 }
@@ -55,7 +64,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
+
   final _passwordController = TextEditingController();
+
   final AuthService _authService = AuthService();
 
   bool _obscurePassword = true;
@@ -72,72 +83,131 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isLoggingIn) return;
 
     final username = _usernameController.text.trim();
+
     final password = _passwordController.text;
 
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter username and password')),
       );
+
       return;
     }
 
-    setState(() => _isLoggingIn = true);
+    setState(() {
+      _isLoggingIn = true;
+    });
 
     final user = await _authService.login(username, password);
 
     if (!mounted) return;
 
-    setState(() => _isLoggingIn = false);
+    setState(() {
+      _isLoggingIn = false;
+    });
 
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Invalid username or password')),
       );
+
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => DashboardScreen(user: user),
-      ),
-    );
+    /*
+     * If the Viewer opened a Durgasevak backup
+     * file before logging in, keep that file path
+     * and pass it to Dashboard.
+     *
+     * Dashboard will then open Data Sync and
+     * automatically import the received backup.
+     */
+    final incomingFile = FileIntentService.incomingFile.value;
+
+    if (user.isViewer &&
+        incomingFile != null &&
+        incomingFile.trim().isNotEmpty) {
+      FileIntentService.clearIncomingFile();
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              DashboardScreen(user: user, initialBackupPath: incomingFile),
+        ),
+      );
+
+      return;
+    }
+
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => DashboardScreen(user: user)));
   }
 
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
           const ColoredBox(color: Colors.black),
+
+          /*
+           * Full-screen Durgasevak logo/watermark.
+           */
           IgnorePointer(
             child: Center(
               child: Opacity(
-                opacity: 0.22,
+                opacity: 0.20,
                 child: Image.asset(
-                  'assets/images/durgasevak_watermark.jpg',
-                  width: MediaQuery.sizeOf(context).width * 0.92,
+                  'assets/images/'
+                  'durgasevak_watermark.jpg',
+                  width: screenWidth * 0.90,
                   fit: BoxFit.contain,
                 ),
               ),
             ),
           ),
+
           SafeArea(
             child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                24,
-                40,
-                24,
-                24 + bottomInset,
-              ),
+              padding: EdgeInsets.fromLTRB(24, 28, 24, 24 + bottomInset),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 430),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 260),
+                    const SizedBox(height: 55),
+
+                    /*
+                     * Main Durgasevak logo.
+                     *
+                     * This replaces the need for
+                     * separate Admin/Durgasevak
+                     * profile images on the login.
+                     */
+                    Center(
+                      child: Container(
+                        width: 170,
+                        height: 170,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24, width: 1),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Image.asset(
+                          'assets/images/'
+                          'durgasevak_watermark.jpg',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 22),
+
                     const Text(
                       'DURGASEVAK',
                       textAlign: TextAlign.center,
@@ -148,16 +218,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         letterSpacing: 2,
                       ),
                     ),
+
                     const SizedBox(height: 6),
+
                     const Text(
                       'Management System',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 15,
-                      ),
+                      style: TextStyle(color: Colors.white70, fontSize: 15),
                     ),
+
                     const SizedBox(height: 28),
+
                     TextField(
                       controller: _usernameController,
                       enabled: !_isLoggingIn,
@@ -168,7 +239,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         prefixIcon: Icon(Icons.person_outline),
                       ),
                     ),
+
                     const SizedBox(height: 14),
+
                     TextField(
                       controller: _passwordController,
                       enabled: !_isLoggingIn,
@@ -195,7 +268,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 18),
+
                     SizedBox(
                       height: 52,
                       child: FilledButton(

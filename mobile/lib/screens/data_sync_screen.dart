@@ -1,349 +1,393 @@
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path;
+import 'package:share_plus/share_plus.dart';
 
-// import '../database/database_service.dart';
 import '../services/auth_service.dart';
 import '../services/database_backup_service.dart';
-import '../services/google_drive_service.dart';
 import '../services/sync_metadata_service.dart';
+import '../widgets/app_background.dart';
 
 class DataSyncScreen extends StatefulWidget {
   final AuthUser user;
+  final String? incomingBackupPath;
 
   const DataSyncScreen({
     super.key,
     required this.user,
+    this.incomingBackupPath,
   });
 
   @override
-  State<DataSyncScreen> createState() =>
-      _DataSyncScreenState();
+  State<DataSyncScreen> createState() => _DataSyncScreenState();
 }
 
 class _DataSyncScreenState extends State<DataSyncScreen> {
-  final GoogleDriveService _driveService =
-      GoogleDriveService.instance;
+  final DatabaseBackupService _backupService = DatabaseBackupService.instance;
 
-  final DatabaseBackupService _backupService =
-      DatabaseBackupService.instance;
-
-  final SyncMetadataService _metadataService =
-      SyncMetadataService.instance;
-
-  final TextEditingController _viewerEmailController =
-      TextEditingController();
+  final SyncMetadataService _metadataService = SyncMetadataService.instance;
 
   bool _busy = false;
+  bool _automaticImportRunning = false;
 
-  String? _googleEmail;
-  String? _lastUploaded;
-  String? _lastDownloaded;
-  String? _driveModifiedTime;
+  String? _lastExported;
+  String? _lastImported;
+  String? _localDataVersion;
+
+  String? _incomingPath;
+  String? _incomingVersion;
+  bool? _incomingIsNewer;
 
   bool get _isAdmin => widget.user.isAdmin;
 
   @override
   void initState() {
     super.initState();
-    _loadMetadata();
-  }
 
-  @override
-  void dispose() {
-    _viewerEmailController.dispose();
-    super.dispose();
+    _incomingPath = widget.incomingBackupPath;
+
+    _loadMetadata().then((_) async {
+      if (_incomingPath != null && !_isAdmin) {
+        await _handleAutomaticImport(_incomingPath!);
+      }
+    });
   }
 
   Future<void> _loadMetadata() async {
-    final email = await _metadataService.get(
-      'google_account',
-    );
+    final exported = await _metadataService.get('last_exported_at');
 
-    final uploaded = await _metadataService.get(
-      'last_uploaded_at',
-    );
+    final imported = await _metadataService.get('last_imported_at');
 
-    final downloaded = await _metadataService.get(
-      'last_downloaded_at',
-    );
+    final localVersion = await _metadataService.get('local_data_version');
 
-    final driveModified = await _metadataService.get(
-      'drive_modified_time',
-    );
-
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
-      _googleEmail = email;
-      _lastUploaded = uploaded;
-      _lastDownloaded = downloaded;
-      _driveModifiedTime = driveModified;
+      _lastExported = exported;
+      _lastImported = imported;
+      _localDataVersion = localVersion;
     });
   }
 
-  Future<void> _connectGoogleDrive() async {
-    await _runBusy(() async {
-      final account = await _driveService.connect(
-        isAdmin: _isAdmin,
-      );
+  Future<void> _exportAndShareData() async {
+    if (_busy) return;
 
-      await _metadataService.set(
-        'google_account',
-        account.email,
-      );
+    setState(() {
+      _busy = true;
+    });
 
-      if (mounted) {
-        setState(() {
-          _googleEmail = account.email;
-        });
+    String? backupPath;
+
+    try {
+      backupPath = await _backupService.createBackup();
+
+      final now = DateTime.now().toIso8601String();
+
+      await _metadataService.set('last_exported_at', now);
+
+      final version = await _backupService.getBackupDataVersion(backupPath);
+
+      if (version != null) {
+        await _metadataService.set('local_data_version', version);
       }
 
-      _showMessage(
-        'Google Drive connected as ${account.email}.',
-      );
-    });
-  }
+      await _loadMetadata();
 
-  Future<void> _updateOnGoogleDrive() async {
-    await _runBusy(() async {
-      final account = await _driveService.connect(
-        isAdmin: true,
-      );
+      if (!mounted) return;
 
-      await _metadataService.set(
-        'google_account',
-        account.email,
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(backupPath)],
+          subject: 'Durgasevak Data Backup',
+          text:
+              'Durgasevak data backup. '
+              'Open this file on the Viewer phone '
+              'to import the latest data.',
+        ),
       );
 
-      final folderId =
-          await _driveService.getOrCreateFolder();
+      if (!mounted) return;
 
-      await _metadataService.set(
-        'drive_folder_id',
-        folderId,
-      );
+      _showMessage('Backup created successfully.');
+    } catch (e) {
+      if (!mounted) return;
 
-      final backupPath =
-          await _backupService.createBackup();
-
-      try {
-        final fileId =
-            await _driveService.uploadBackup(
-          backupPath,
-          folderId,
-        );
-
-        await _metadataService.set(
-          'drive_backup_file_id',
-          fileId,
-        );
-
-        final now =
-            DateTime.now().toIso8601String();
-
-        await _metadataService.set(
-          'last_uploaded_at',
-          now,
-        );
-
-        await _metadataService.set(
-          'local_data_version',
-          now,
-        );
-
-        await _loadMetadata();
-
-        _showMessage(
-          'Data updated on Google Drive successfully.',
-        );
-      } finally {
+      _showMessage(_cleanError(e), isError: true);
+    } finally {
+      if (backupPath != null) {
         final file = File(backupPath);
 
         if (await file.exists()) {
           await file.delete();
         }
       }
-    });
+
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
+    }
   }
 
-  Future<void> _shareFolder() async {
-    final email = _viewerEmailController.text
-        .trim()
-        .toLowerCase();
+  Future<void> _pickBackupFile() async {
+    if (_busy) return;
 
-    if (email.isEmpty) {
-      _showMessage(
-        'Enter a viewer Gmail address first.',
-        isError: true,
-      );
-      return;
-    }
-
-    if (!email.endsWith('@gmail.com')) {
-      _showMessage(
-        'Please enter a valid @gmail.com address.',
-        isError: true,
-      );
-      return;
-    }
-
-    await _runBusy(() async {
-      final folderId =
-          await _driveService.getOrCreateFolder();
-
-      await _metadataService.set(
-        'drive_folder_id',
-        folderId,
+    try {
+      final PlatformFile? selected = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: ['db', 'durgasevak'],
       );
 
-      await _driveService.shareFolderWithUser(
-        folderId,
-        email,
-      );
-
-      _viewerEmailController.clear();
-
-      _showMessage(
-        'Durgasevak folder shared with $email as Viewer.',
-      );
-    });
-  }
-
-  Future<void> _fetchLatestData() async {
-    await _runBusy(() async {
-      final account = await _driveService.connect(
-        isAdmin: false,
-      );
-
-      await _metadataService.set(
-        'google_account',
-        account.email,
-      );
-
-      final metadata =
-          await _driveService.getBackupMetadata();
-
-      if (metadata == null) {
-        _showMessage(
-          'No Durgasevak backup was found on Google Drive.',
-          isError: true,
-        );
+      if (selected == null) {
         return;
       }
 
-      final fileId = metadata['id'] as String?;
+      String? selectedPath = selected.path;
 
-      final modifiedTime =
-          metadata['modifiedTime'] as String?;
+      if (selectedPath == null || selectedPath.trim().isEmpty) {
+        final bytes = await selected.readAsBytes();
 
-      if (fileId == null || fileId.isEmpty) {
-        throw Exception(
-          'Google Drive returned an invalid backup file.',
+        final tempDirectory = Directory.systemTemp;
+
+        final tempFile = File(
+          path.join(
+            tempDirectory.path,
+            'durgasevak_import_'
+            '${DateTime.now().millisecondsSinceEpoch}.db',
+          ),
         );
+
+        await tempFile.writeAsBytes(bytes, flush: true);
+
+        selectedPath = tempFile.path;
       }
 
-      final localVersion =
-          await _metadataService.get(
-        'local_data_version',
-      );
+      await _inspectIncomingBackup(selectedPath);
+    } catch (e) {
+      if (!mounted) return;
 
-      if (modifiedTime != null &&
-          localVersion != null) {
-        final remote =
-            DateTime.tryParse(modifiedTime);
-
-        final local =
-            DateTime.tryParse(localVersion);
-
-        if (remote != null &&
-            local != null &&
-            !remote.isAfter(local)) {
-          _showMessage(
-            'Your local data is already up to date.',
-          );
-          return;
-        }
-      }
-
-      final databasePath =
-          await _backupService.getDatabasePath();
-
-      final downloadPath =
-          '$databasePath.download';
-
-      try {
-        await _driveService.downloadBackup(
-          fileId,
-          downloadPath,
-        );
-
-        await _backupService.restoreBackup(
-          downloadPath,
-        );
-
-        final now =
-            DateTime.now().toIso8601String();
-
-        await _metadataService.set(
-          'last_downloaded_at',
-          now,
-        );
-
-        if (modifiedTime != null) {
-          await _metadataService.set(
-            'drive_modified_time',
-            modifiedTime,
-          );
-
-          await _metadataService.set(
-            'local_data_version',
-            modifiedTime,
-          );
-        } else {
-          await _metadataService.set(
-            'local_data_version',
-            now,
-          );
-        }
-
-        await _loadMetadata();
-
-        _showMessage(
-          'Latest data fetched successfully.',
-        );
-      } finally {
-        final downloaded = File(downloadPath);
-
-        if (await downloaded.exists()) {
-          await downloaded.delete();
-        }
-      }
-    });
+      _showMessage(_cleanError(e), isError: true);
+    }
   }
 
-  Future<void> _runBusy(
-    Future<void> Function() action,
-  ) async {
-    if (_busy) {
+  Future<void> _inspectIncomingBackup(String backupPath) async {
+    try {
+      final file = File(backupPath);
+
+      if (!await file.exists()) {
+        throw Exception('Selected backup file was not found.');
+      }
+
+      await _backupService.validateBackup(backupPath);
+
+      final incomingVersion = await _backupService.getBackupDataVersion(
+        backupPath,
+      );
+
+      final localDatabasePath = await _backupService.getDatabasePath();
+
+      final localVersion = await _backupService.getBackupDataVersion(
+        localDatabasePath,
+      );
+
+      DateTime? incomingDate;
+
+      if (incomingVersion != null) {
+        incomingDate = DateTime.tryParse(incomingVersion);
+      }
+
+      final localDate = localVersion == null
+          ? null
+          : DateTime.tryParse(localVersion);
+
+      bool? isNewer;
+
+      if (incomingDate != null && localDate != null) {
+        isNewer = incomingDate.isAfter(localDate);
+      } else if (incomingDate != null && localDate == null) {
+        isNewer = true;
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _incomingPath = backupPath;
+        _incomingVersion = incomingVersion;
+        _incomingIsNewer = isNewer;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _incomingPath = backupPath;
+        _incomingVersion = null;
+        _incomingIsNewer = false;
+      });
+
+      _showMessage(_cleanError(e), isError: true);
+    }
+  }
+
+  Future<void> _handleAutomaticImport(String backupPath) async {
+    if (_automaticImportRunning || _busy || _isAdmin) {
       return;
     }
+
+    _automaticImportRunning = true;
+
+    try {
+      final file = File(backupPath);
+
+      if (!await file.exists()) {
+        throw Exception(
+          'The received Durgasevak backup file '
+          'could not be found.',
+        );
+      }
+
+      final incomingVersion = await _backupService.validateBackup(backupPath);
+
+      final localDatabasePath = await _backupService.getDatabasePath();
+
+      final localVersion = await _backupService.getBackupDataVersion(
+        localDatabasePath,
+      );
+
+      final incomingDate = DateTime.tryParse(incomingVersion);
+
+      final localDate = localVersion == null
+          ? null
+          : DateTime.tryParse(localVersion);
+
+      if (incomingDate == null) {
+        throw Exception('The backup data version is invalid.');
+      }
+
+      final isNewer = localDate == null || incomingDate.isAfter(localDate);
+
+      if (!isNewer) {
+        if (!mounted) return;
+
+        _showMessage(
+          'This backup is not newer than the '
+          'current Viewer data.',
+          isError: true,
+        );
+
+        return;
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _busy = true;
+        _incomingPath = backupPath;
+        _incomingVersion = incomingVersion;
+        _incomingIsNewer = true;
+      });
+
+      await _backupService.restoreBackup(backupPath);
+
+      final importedVersion = await _backupService.getBackupDataVersion(
+        backupPath,
+      );
+
+      final now = DateTime.now().toIso8601String();
+
+      await _metadataService.set('last_imported_at', now);
+
+      if (importedVersion != null) {
+        await _metadataService.set('local_data_version', importedVersion);
+      }
+
+      if (!mounted) return;
+
+      _showMessage('Latest Admin data imported successfully.');
+
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+
+      if (!mounted) return;
+
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+
+      _showMessage(_cleanError(e), isError: true);
+    } finally {
+      _automaticImportRunning = false;
+
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _importSelectedBackup() async {
+    if (_busy) return;
+
+    final backupPath = _incomingPath;
+
+    if (backupPath == null) {
+      await _pickBackupFile();
+      return;
+    }
+
+    if (_incomingIsNewer != true) {
+      _showMessage(
+        'This backup is not newer than the '
+        'current data.',
+        isError: true,
+      );
+
+      return;
+    }
+
+    final confirmed = await _confirmImport();
+
+    if (!confirmed) return;
 
     setState(() {
       _busy = true;
     });
 
     try {
-      await action();
-    } catch (e) {
-      if (mounted) {
-        _showMessage(
-          _cleanError(e),
-          isError: true,
-        );
+      await _backupService.restoreBackup(backupPath);
+
+      final importedVersion = await _backupService.getBackupDataVersion(
+        backupPath,
+      );
+
+      final now = DateTime.now().toIso8601String();
+
+      await _metadataService.set('last_imported_at', now);
+
+      if (importedVersion != null) {
+        await _metadataService.set('local_data_version', importedVersion);
       }
+
+      await _loadMetadata();
+
+      if (!mounted) return;
+
+      setState(() {
+        _incomingPath = null;
+        _incomingVersion = null;
+        _incomingIsNewer = null;
+      });
+
+      _showMessage(
+        'Latest data imported successfully. '
+        'Please return to Dashboard.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      _showMessage(_cleanError(e), isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -353,39 +397,54 @@ class _DataSyncScreenState extends State<DataSyncScreen> {
     }
   }
 
+  Future<bool> _confirmImport() async {
+    if (!mounted) return false;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Import Data?'),
+          content: const Text(
+            'Importing will replace all current '
+            'local Durgasevak data with the '
+            'selected Admin backup.\n\n'
+            'Make sure you selected the correct '
+            'backup file.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              child: const Text('Import'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return result == true;
+  }
+
   String _cleanError(Object error) {
     final text = error.toString();
 
     if (text.startsWith('Exception: ')) {
-      return text.substring(
-        'Exception: '.length,
-      );
+      return text.substring('Exception: '.length);
     }
 
     return text;
   }
 
-  void _showMessage(
-    String message, {
-    bool isError = false,
-  }) {
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor:
-              isError ? Colors.red : null,
-        ),
-      );
-  }
-
   String _formatDate(String? value) {
-    if (value == null || value.isEmpty) {
+    if (value == null || value.trim().isEmpty) {
       return 'Not available';
     }
 
@@ -397,8 +456,7 @@ class _DataSyncScreenState extends State<DataSyncScreen> {
 
     final local = date.toLocal();
 
-    String two(int value) =>
-        value.toString().padLeft(2, '0');
+    String two(int value) => value.toString().padLeft(2, '0');
 
     return '${two(local.day)}/'
         '${two(local.month)}/'
@@ -407,218 +465,125 @@ class _DataSyncScreenState extends State<DataSyncScreen> {
         '${two(local.minute)}';
   }
 
+  String _fileName(String? filePath) {
+    if (filePath == null || filePath.isEmpty) {
+      return 'No backup selected';
+    }
+
+    return path.basename(filePath);
+  }
+
+  void _showMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: isError ? Colors.red : null,
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Data Sync'),
-      ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadMetadata,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            child: Icon(
-                              _isAdmin
-                                  ? Icons.admin_panel_settings
-                                  : Icons.visibility,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _isAdmin
-                                      ? 'Admin Sync'
-                                      : 'Viewer Sync',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _isAdmin
-                                      ? 'Upload the latest local data to Google Drive.'
-                                      : 'Fetch the latest Admin data from Google Drive.',
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      ListTile(
-                        contentPadding:
-                            EdgeInsets.zero,
-                        leading: const Icon(
-                          Icons.account_circle_outlined,
-                        ),
-                        title: const Text(
-                          'Google Account',
-                        ),
-                        subtitle: Text(
-                          _googleEmail ??
-                              'Not connected',
-                        ),
-                      ),
-                      const Divider(),
-                      ListTile(
-                        contentPadding:
-                            EdgeInsets.zero,
-                        leading: Icon(
-                          _googleEmail == null
-                              ? Icons.cloud_off
-                              : Icons.cloud_done,
-                        ),
-                        title: const Text(
-                          'Drive connection',
-                        ),
-                        subtitle: Text(
-                          _googleEmail == null
-                              ? 'Not connected'
-                              : 'Connected',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (_isAdmin)
-                _buildAdminSection()
-              else
-                _buildViewerSection(),
-              const SizedBox(height: 16),
-              _buildHistoryCard(),
-            ],
+      appBar: AppBar(title: const Text('Data Sync')),
+      body: AppBackground(
+        child: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: _loadMetadata,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 16),
+                if (_isAdmin) _buildAdminSection() else _buildViewerSection(),
+                const SizedBox(height: 16),
+                if (!_isAdmin && _incomingPath != null)
+                  _buildIncomingBackupCard(),
+                if (!_isAdmin && _incomingPath != null)
+                  const SizedBox(height: 16),
+                _buildHistoryCard(),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildAdminSection() {
-    return Column(
-      children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Google Drive',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Connect your Google account before uploading data.',
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed:
-                      _busy
-                          ? null
-                          : _connectGoogleDrive,
-                  icon: const Icon(
-                    Icons.login,
-                  ),
-                  label: const Text(
-                    'Connect Google Drive',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed:
-                      _busy
-                          ? null
-                          : _updateOnGoogleDrive,
-                  icon: const Icon(
-                    Icons.cloud_upload,
-                  ),
-                  label: const Text(
-                    'Update on Google Drive',
-                  ),
-                ),
-              ],
+  Widget _buildHeader() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 28,
+              child: Icon(
+                _isAdmin ? Icons.admin_panel_settings : Icons.visibility,
+                size: 30,
+              ),
             ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Share with Viewer',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Enter a group member\'s Gmail address. '
-                  'They will receive read-only access to the '
-                  'Durgasevak Drive folder.',
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller:
-                      _viewerEmailController,
-                  keyboardType:
-                      TextInputType.emailAddress,
-                  enabled: !_busy,
-                  decoration:
-                      const InputDecoration(
-                    labelText:
-                        'Viewer Gmail address',
-                    hintText:
-                        'member@gmail.com',
-                    prefixIcon: Icon(
-                      Icons.email_outlined,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isAdmin ? 'Admin Data Sync' : 'Viewer Data Sync',
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
                     ),
-                    border:
-                        OutlineInputBorder(),
                   ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed:
-                      _busy
-                          ? null
-                          : _shareFolder,
-                  icon: const Icon(
-                    Icons.person_add_alt_1,
+                  const SizedBox(height: 5),
+                  Text(
+                    _isAdmin
+                        ? 'Export the latest local data '
+                              'and share it with the Viewer.'
+                        : 'Import the latest Admin data '
+                              'received from the Admin.',
+                    style: const TextStyle(color: Colors.grey),
                   ),
-                  label: const Text(
-                    'Give Viewer Access',
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildAdminSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Admin',
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Create a complete backup of the '
+              'current Durgasevak database and '
+              'share it with the Viewer.',
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: _busy ? null : _exportAndShareData,
+              icon: const Icon(Icons.ios_share),
+              label: const Text('Export & Share Data'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -627,65 +592,88 @@ class _DataSyncScreenState extends State<DataSyncScreen> {
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Latest Data',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium,
+            const Text(
+              'Viewer',
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
-              'The Viewer account can only read and fetch '
-              'the Admin backup. It cannot upload or modify '
-              'the Google Drive backup.',
+              'You can also select a backup manually '
+              'if it was not opened directly from '
+              'another app.',
             ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed:
-                  _busy
-                      ? null
-                      : _connectGoogleDrive,
-              icon: const Icon(
-                Icons.login,
-              ),
-              label: const Text(
-                'Connect Google Drive',
-              ),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 18),
             FilledButton.icon(
-              onPressed:
-                  _busy
-                      ? null
-                      : _fetchLatestData,
-              icon: const Icon(
-                Icons.cloud_download,
+              onPressed: _busy ? null : _pickBackupFile,
+              icon: const Icon(Icons.folder_open),
+              label: const Text('Select Backup File'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIncomingBackupCard() {
+    final newer = _incomingIsNewer == true;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Selected Backup',
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 14),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                newer
+                    ? Icons.check_circle_outline
+                    : Icons.warning_amber_outlined,
               ),
-              label: const Text(
-                'Fetch Latest Data',
+              title: Text(_fileName(_incomingPath)),
+              subtitle: Text(
+                _incomingVersion == null
+                    ? 'Unable to read backup version'
+                    : 'Backup version: '
+                          '${_formatDate(_incomingVersion)}',
               ),
             ),
-            if (_driveModifiedTime != null) ...[
-              const SizedBox(height: 16),
-              ListTile(
-                contentPadding:
-                    EdgeInsets.zero,
-                leading: const Icon(
-                  Icons.cloud_outlined,
+            const SizedBox(height: 8),
+            if (_incomingIsNewer == true)
+              const Text(
+                'A newer Admin backup is available.',
+                style: TextStyle(
+                  color: Colors.greenAccent,
+                  fontWeight: FontWeight.w600,
                 ),
-                title: const Text(
-                  'Latest data on Google Drive',
-                ),
-                subtitle: Text(
-                  _formatDate(
-                    _driveModifiedTime,
-                  ),
+              )
+            else
+              const Text(
+                'This backup cannot be imported '
+                'because it is not newer than '
+                'the current data.',
+                style: TextStyle(
+                  color: Colors.orangeAccent,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
+            const SizedBox(height: 16),
+            if (_incomingIsNewer == true)
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _busy ? null : _importSelectedBackup,
+                  icon: const Icon(Icons.download_done),
+                  label: const Text('Import Latest Data'),
+                ),
+              ),
           ],
         ),
       ),
@@ -697,50 +685,32 @@ class _DataSyncScreenState extends State<DataSyncScreen> {
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Sync History',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium,
+            const Text(
+              'Data History',
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             ListTile(
-              contentPadding:
-                  EdgeInsets.zero,
-              leading: const Icon(
-                Icons.upload_outlined,
-              ),
-              title: const Text(
-                'Last uploaded',
-              ),
-              subtitle: Text(
-                _formatDate(
-                  _lastUploaded,
-                ),
-              ),
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.update),
+              title: const Text('Current data version'),
+              subtitle: Text(_formatDate(_localDataVersion)),
+            ),
+            const Divider(),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.upload_outlined),
+              title: const Text('Last exported'),
+              subtitle: Text(_formatDate(_lastExported)),
             ),
             ListTile(
-              contentPadding:
-                  EdgeInsets.zero,
-              leading: const Icon(
-                Icons.download_outlined,
-              ),
-              title: const Text(
-                'Last downloaded',
-              ),
-              subtitle: Text(
-                _formatDate(
-                  _lastDownloaded,
-                ),
-              ),
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.download_outlined),
+              title: const Text('Last imported'),
+              subtitle: Text(_formatDate(_lastImported)),
             ),
-            if (_busy) ...[
-              const SizedBox(height: 12),
-              const LinearProgressIndicator(),
-            ],
           ],
         ),
       ),
