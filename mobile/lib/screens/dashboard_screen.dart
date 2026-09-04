@@ -277,10 +277,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildHeader() {
     return Row(
       children: [
-        ClipRRect(
+                ClipRRect(
           borderRadius: BorderRadius.circular(14),
           child: Image.asset(
-            'assets/images/durgasevak_watermark.jpg',
+            widget.user.isAdmin
+                ? 'assets/images/Admin.jpeg'
+                : 'assets/images/Durgasevak.jpeg',
             width: 58,
             height: 58,
             fit: BoxFit.cover,
