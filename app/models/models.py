@@ -9,6 +9,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    LargeBinary,
 )
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -262,5 +263,16 @@ class MeetingDiscussion(Base):
     created_at = Column(
         DateTime,
         server_default=func.now(),
+        nullable=False,
+    )
+class CloudSync(Base):
+    __tablename__ = "cloud_sync"
+
+    id = Column(Integer, primary_key=True, index=True)
+    file_data = Column(LargeBinary, nullable=False)
+    updated_at = Column(
+        DateTime,
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
     )

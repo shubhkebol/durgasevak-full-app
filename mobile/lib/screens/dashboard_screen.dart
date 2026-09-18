@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../repositories/dashboard_repository.dart';
 import '../services/auth_service.dart';
+import '../services/backend_sync_service.dart';
+import '../services/database_backup_service.dart';
 import '../services/file_intent_service.dart';
 import '../widgets/app_background.dart';
 import 'committee_screen.dart';
@@ -92,6 +96,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Unable to load dashboard: $e')));
+    }
+  }
+
+  Future<void> _quickFetchFromCloud() async {
+    if (_isLoading) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Fetching latest data from cloud...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      final syncService = BackendSyncService.instance;
+      // Viewers can use the default viewer account
+      final token = await syncService.login('Durgasevak', 'Durgasevak');
+      
+      final tempDirectory = Directory.systemTemp;
+      final downloadedPath = await syncService.downloadLatestBackup(tempDirectory.path, token);
+
+      if (!mounted) return;
+
+      final backupService = DatabaseBackupService.instance;
+      await backupService.restoreBackup(downloadedPath);
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dashboard successfully updated from cloud!')),
+      );
+
+      await _loadDashboard();
+      
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to fetch from cloud: $e')),
+      );
     }
   }
 
@@ -206,8 +255,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text('Durgasevak'),
         actions: [
+          if (widget.user.isViewer)
+            IconButton(
+              tooltip: 'Fetch from Cloud',
+              onPressed: _isLoading ? null : _quickFetchFromCloud,
+              icon: const Icon(Icons.cloud_download),
+            ),
           IconButton(
-            tooltip: 'Refresh',
+            tooltip: 'Refresh Local',
             onPressed: _isLoading ? null : _loadDashboard,
             icon: const Icon(Icons.refresh),
           ),
@@ -220,8 +275,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: AppBackground(
         child: RefreshIndicator(
-          onRefresh: _loadDashboard,
-          child: _isLoading
+          onRefresh: widget.user.isViewer ? _quickFetchFromCloud : _loadDashboard,
+          child: _isLoading && summary == null
               ? ListView(
                   children: [
                     SizedBox(height: 280),

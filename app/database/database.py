@@ -10,13 +10,21 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 # Local SQLite database
 DATABASE_PATH = BASE_DIR / "durgasevak.db"
 
-DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
+import os
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+if not DATABASE_URL:
+    DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
-)
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+    )
+else:
+    engine = create_engine(DATABASE_URL)
 
 
 SessionLocal = sessionmaker(

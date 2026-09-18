@@ -8,6 +8,7 @@ from fastapi import (
     HTTPException,
     UploadFile,
 )
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.database.database import get_db
@@ -67,9 +68,41 @@ def export_backup(
         )
 
 
+@router.get("/download_latest")
+def download_latest_backup(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        from app.models.models import CloudSync
+        from fastapi import Response
+        
+        sync = db.query(CloudSync).first()
+        
+        if not sync or not sync.file_data:
+            raise HTTPException(
+                status_code=404,
+                detail="No cloud backup found. Admin needs to upload one first.",
+            )
+        
+        return Response(
+            content=sync.file_data,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": "attachment; filename=durgasevak_backup.db"}
+        )
+    except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise exc
+        raise HTTPException(
+            status_code=500,
+            detail=str(exc),
+        )
+
+
 @router.post("/import")
 def import_backup(
     file: UploadFile = File(...),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     if not file.filename:
@@ -84,62 +117,28 @@ def import_backup(
             detail="Only .db backup files are supported.",
         )
 
-    temporary_directory = Path("temp")
-    temporary_directory.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    temporary_file = (
-        temporary_directory
-        / "durgasevak_import.db"
-    )
-
     try:
-        with temporary_file.open("wb") as buffer:
-            while True:
-                chunk = file.file.read(
-                    1024 * 1024
-                )
-
-                if not chunk:
-                    break
-
-                buffer.write(chunk)
-
-        result = import_database(
-            str(temporary_file)
-        )
+        from app.models.models import CloudSync
+        from datetime import datetime
+        
+        file_data = file.file.read()
+        
+        sync = db.query(CloudSync).first()
+        if sync:
+            sync.file_data = file_data
+            sync.updated_at = datetime.utcnow()
+        else:
+            sync = CloudSync(id=1, file_data=file_data)
+            db.add(sync)
+        db.commit()
 
         return {
             "success": True,
-            "message": (
-                "Database imported successfully. "
-                "Existing database was backed up first."
-            ),
-            "safety_backup": result[
-                "safety_backup"
-            ],
+            "message": "Database uploaded to cloud successfully.",
         }
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        )
-
-    except FileNotFoundError as exc:
-        raise HTTPException(
-            status_code=404,
-            detail=str(exc),
-        )
 
     except Exception as exc:
         raise HTTPException(
             status_code=500,
             detail=str(exc),
         )
-
-    finally:
-        if temporary_file.exists():
-            temporary_file.unlink()

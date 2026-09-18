@@ -116,7 +116,6 @@ def _is_valid_database(database_path: Path) -> bool:
             "donations",
             "expenses",
             "users",
-            "alembic_version"
         }
 
         return required_tables.issubset(

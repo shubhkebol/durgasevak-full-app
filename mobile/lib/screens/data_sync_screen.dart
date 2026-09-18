@@ -6,6 +6,7 @@ import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart';
 
 import '../services/auth_service.dart';
+import '../services/backend_sync_service.dart';
 import '../services/database_backup_service.dart';
 import '../services/sync_metadata_service.dart';
 import '../widgets/app_background.dart';
@@ -124,6 +125,87 @@ class _DataSyncScreenState extends State<DataSyncScreen> {
         }
       }
 
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _uploadToCloud() async {
+    if (_busy) return;
+
+    setState(() {
+      _busy = true;
+    });
+
+    String? backupPath;
+
+    try {
+      backupPath = await _backupService.createBackup();
+
+      final now = DateTime.now().toIso8601String();
+      await _metadataService.set('last_exported_at', now);
+      final version = await _backupService.getBackupDataVersion(backupPath);
+      if (version != null) {
+        await _metadataService.set('local_data_version', version);
+      }
+      await _loadMetadata();
+
+      if (!mounted) return;
+      _showMessage('Uploading backup to cloud...');
+
+      final syncService = BackendSyncService.instance;
+      // Use Admin credentials to get token
+      final token = await syncService.login('Admin', 'Chatrapati');
+      await syncService.uploadBackup(backupPath, token);
+
+      if (!mounted) return;
+      _showMessage('Backup uploaded to cloud successfully.');
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(_cleanError(e), isError: true);
+    } finally {
+      if (backupPath != null) {
+        final file = File(backupPath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchFromCloud() async {
+    if (_busy) return;
+
+    setState(() {
+      _busy = true;
+    });
+
+    try {
+      _showMessage('Fetching backup from cloud...');
+
+      final syncService = BackendSyncService.instance;
+      // Viewers can use the default viewer account
+      final token = await syncService.login('Durgasevak', 'Durgasevak');
+      
+      final tempDirectory = Directory.systemTemp;
+      final downloadedPath = await syncService.downloadLatestBackup(tempDirectory.path, token);
+
+      if (!mounted) return;
+
+      await _inspectIncomingBackup(downloadedPath);
+      
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage(_cleanError(e), isError: true);
+    } finally {
       if (mounted) {
         setState(() {
           _busy = false;
@@ -573,10 +655,16 @@ class _DataSyncScreenState extends State<DataSyncScreen> {
             const Text(
               'Create a complete backup of the '
               'current Durgasevak database and '
-              'share it with the Viewer.',
+              'share it with the Viewer or upload it to Cloud.',
             ),
             const SizedBox(height: 18),
             FilledButton.icon(
+              onPressed: _busy ? null : _uploadToCloud,
+              icon: const Icon(Icons.cloud_upload),
+              label: const Text('Upload to Cloud'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
               onPressed: _busy ? null : _exportAndShareData,
               icon: const Icon(Icons.ios_share),
               label: const Text('Export & Share Data'),
@@ -600,12 +688,18 @@ class _DataSyncScreenState extends State<DataSyncScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'You can also select a backup manually '
+              'Fetch latest backup from Cloud, or select a backup manually '
               'if it was not opened directly from '
               'another app.',
             ),
             const SizedBox(height: 18),
             FilledButton.icon(
+              onPressed: _busy ? null : _fetchFromCloud,
+              icon: const Icon(Icons.cloud_download),
+              label: const Text('Fetch from Cloud'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
               onPressed: _busy ? null : _pickBackupFile,
               icon: const Icon(Icons.folder_open),
               label: const Text('Select Backup File'),
