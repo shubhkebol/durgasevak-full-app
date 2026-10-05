@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 class AppBackground extends StatelessWidget {
   final Widget child;
 
-  const AppBackground({
-    super.key,
-    required this.child,
-  });
+  const AppBackground({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -14,9 +11,7 @@ class AppBackground extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         // Main black background.
-        const ColoredBox(
-          color: Colors.black,
-        ),
+        const ColoredBox(color: Colors.black),
 
         // Centered Durgasevak watermark.
         IgnorePointer(

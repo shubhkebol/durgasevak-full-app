@@ -15,16 +15,13 @@ class DashboardSummary {
     required this.otherDonations,
   });
 
-  double get balance =>
-      totalDonations - totalExpenses;
+  double get balance => totalDonations - totalExpenses;
 }
 
 class DashboardRepository {
-  static final DashboardRepository instance =
-      DashboardRepository._internal();
+  static final DashboardRepository instance = DashboardRepository._internal();
 
-  final DatabaseService _databaseService =
-      DatabaseService.instance;
+  final DatabaseService _databaseService = DatabaseService.instance;
 
   DashboardRepository._internal();
 
@@ -60,8 +57,7 @@ class DashboardRepository {
       WHERE active = 1
     ''');
 
-    final otherDonationResult =
-        await db.rawQuery('''
+    final otherDonationResult = await db.rawQuery('''
       SELECT COALESCE(SUM(amount), 0) AS total
       FROM donations
       WHERE active = 1
@@ -69,21 +65,11 @@ class DashboardRepository {
     ''');
 
     return DashboardSummary(
-      activeMembers:
-          (memberResult.first['total'] as num)
-              .toInt(),
-      totalDonations:
-          (donationResult.first['total'] as num)
-              .toDouble(),
-      totalExpenses:
-          (expenseResult.first['total'] as num)
-              .toDouble(),
-      monthlyDonations:
-          (donationResult.first['monthly'] as num)
-              .toDouble(),
-      otherDonations:
-          (otherDonationResult.first['total'] as num)
-              .toDouble(),
+      activeMembers: (memberResult.first['total'] as num).toInt(),
+      totalDonations: (donationResult.first['total'] as num).toDouble(),
+      totalExpenses: (expenseResult.first['total'] as num).toDouble(),
+      monthlyDonations: (donationResult.first['monthly'] as num).toDouble(),
+      otherDonations: (otherDonationResult.first['total'] as num).toDouble(),
     );
   }
 
@@ -96,11 +82,7 @@ class DashboardRepository {
         '${now.year.toString().padLeft(4, '0')}-'
         '${now.month.toString().padLeft(2, '0')}-01';
 
-    final nextMonth = DateTime(
-      now.year,
-      now.month + 1,
-      1,
-    );
+    final nextMonth = DateTime(now.year, now.month + 1, 1);
 
     final end =
         '${nextMonth.year.toString().padLeft(4, '0')}-'
@@ -117,14 +99,10 @@ class DashboardRepository {
       [start, end],
     );
 
-    return (result.first['total'] as num)
-        .toDouble();
+    return (result.first['total'] as num).toDouble();
   }
 
-  Future<List<Map<String, dynamic>>>
-      getRecentDonations({
-    int limit = 5,
-  }) async {
+  Future<List<Map<String, dynamic>>> getRecentDonations({int limit = 5}) async {
     final db = await _databaseService.database;
 
     return db.rawQuery(
@@ -144,10 +122,7 @@ class DashboardRepository {
     );
   }
 
-  Future<List<Map<String, dynamic>>>
-      getRecentExpenses({
-    int limit = 5,
-  }) async {
+  Future<List<Map<String, dynamic>>> getRecentExpenses({int limit = 5}) async {
     final db = await _databaseService.database;
 
     return db.rawQuery(

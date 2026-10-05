@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../database/database_service.dart';
+import '../models/member.dart';
+import '../services/auth_service.dart';
+import '../utils/marathi_constants.dart';
 import '../widgets/app_background.dart';
+import '../widgets/whatsapp_icon.dart';
+import 'member_missed_donations_screen.dart';
 
 class MissedDonationsScreen extends StatefulWidget {
-  const MissedDonationsScreen({super.key});
+  final AuthUser? user;
+
+  const MissedDonationsScreen({super.key, this.user});
 
   @override
   State<MissedDonationsScreen> createState() => _MissedDonationsScreenState();
@@ -48,6 +55,8 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
         SELECT
           m.id,
           m.name,
+          m.mobile,
+          m.address,
           CASE
             WHEN EXISTS (
               SELECT 1
@@ -71,6 +80,8 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
         return _MonthlyDonorStatus(
           memberId: row['id'] as int,
           memberName: row['name'] as String,
+          mobile: row['mobile'] as String?,
+          address: row['address'] as String?,
           paid: (row['paid'] as int? ?? 0) == 1,
         );
       }).toList();
@@ -93,7 +104,7 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to load missed donations: $e')),
+        SnackBar(content: Text('प्रलंबित देणग्या लोड करण्यात अडचण आली: $e')),
       );
     }
   }
@@ -117,28 +128,11 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
     await _loadData();
   }
 
-  String _monthName(int month) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-
-    return months[month - 1];
-  }
-
   String get _selectedMonthLabel {
-    return '${_monthName(_selectedMonth.month)} '
-        '${_selectedMonth.year}';
+    return MarathiConstants.formatMonthYear(
+      _selectedMonth.month,
+      _selectedMonth.year,
+    );
   }
 
   @override
@@ -148,7 +142,7 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
     final missedCount = _members.where((member) => !member.paid).length;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Missed Monthly Donations')),
+      appBar: AppBar(title: const Text('प्रलंबित मासिक देणग्या')),
       body: AppBackground(
         child: RefreshIndicator(
           onRefresh: _loadData,
@@ -179,7 +173,7 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
-                                      'Selected Month',
+                                      'निवडलेला महिना',
                                       style: TextStyle(
                                         fontSize: 13,
                                         color: Colors.grey,
@@ -209,7 +203,7 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
                       children: [
                         Expanded(
                           child: _SummaryBox(
-                            title: 'Members',
+                            title: 'एकूण सदस्य',
                             value: '${_members.length}',
                             icon: Icons.people,
                           ),
@@ -217,7 +211,7 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: _SummaryBox(
-                            title: 'Paid',
+                            title: 'जमा',
                             value: '$paidCount',
                             icon: Icons.check_circle_outline,
                           ),
@@ -225,7 +219,7 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: _SummaryBox(
-                            title: 'Missed',
+                            title: 'बाकी',
                             value: '$missedCount',
                             icon: Icons.warning_amber,
                           ),
@@ -236,7 +230,7 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
                     const SizedBox(height: 20),
 
                     const Text(
-                      'All Members',
+                      'सर्व सदस्य',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -259,7 +253,7 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
                               ),
                               SizedBox(height: 12),
                               Text(
-                                'No active members found',
+                                'कोणतेही सक्रिय सदस्य आढळले नाहीत',
                                 style: TextStyle(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w600,
@@ -279,7 +273,17 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
                               index < _members.length;
                               index++
                             ) ...[
-                              _DonorStatusTile(member: _members[index]),
+                              _DonorStatusTile(
+                                member: _members[index],
+                                user:
+                                    widget.user ??
+                                    const AuthUser(
+                                      id: 1,
+                                      username: 'Admin',
+                                      role: 'editor',
+                                    ),
+                                onRefresh: _loadData,
+                              ),
                               if (index < _members.length - 1)
                                 const Divider(height: 1),
                             ],
@@ -297,11 +301,15 @@ class _MissedDonationsScreenState extends State<MissedDonationsScreen> {
 class _MonthlyDonorStatus {
   final int memberId;
   final String memberName;
+  final String? mobile;
+  final String? address;
   final bool paid;
 
   const _MonthlyDonorStatus({
     required this.memberId,
     required this.memberName,
+    this.mobile,
+    this.address,
     required this.paid,
   });
 }
@@ -347,12 +355,36 @@ class _SummaryBox extends StatelessWidget {
 
 class _DonorStatusTile extends StatelessWidget {
   final _MonthlyDonorStatus member;
+  final AuthUser user;
+  final VoidCallback onRefresh;
 
-  const _DonorStatusTile({required this.member});
+  const _DonorStatusTile({
+    required this.member,
+    required this.user,
+    required this.onRefresh,
+  });
+
+  void _openDetails(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MemberMissedDonationsScreen(
+          member: Member(
+            id: member.memberId,
+            name: member.memberName,
+            mobile: member.mobile,
+            address: member.address,
+          ),
+          user: user,
+        ),
+      ),
+    );
+    onRefresh();
+  }
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      onTap: () => _openDetails(context),
       leading: CircleAvatar(
         child: Text(
           member.memberName.isEmpty ? '?' : member.memberName[0].toUpperCase(),
@@ -362,16 +394,30 @@ class _DonorStatusTile extends StatelessWidget {
         member.memberName,
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
+      subtitle: member.mobile != null
+          ? Text(
+              '+91 ${member.mobile!}',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            )
+          : null,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (!member.paid && user.isAdmin)
+            IconButton(
+              icon: const WhatsAppIcon(size: 20),
+              tooltip: 'व्हॉट्सॲप स्मरणपत्र पाठवा',
+              onPressed: () => _openDetails(context),
+            ),
+          const SizedBox(width: 4),
           Icon(
             member.paid ? Icons.check_circle : Icons.cancel,
             color: member.paid ? Colors.green : Colors.red,
+            size: 20,
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           Text(
-            member.paid ? 'Paid' : 'Missed',
+            member.paid ? 'जमा' : 'बाकी',
             style: TextStyle(
               fontWeight: FontWeight.w600,
               color: member.paid ? Colors.green : Colors.red,
@@ -404,29 +450,10 @@ class _MonthYearPickerDialogState extends State<_MonthYearPickerDialog> {
     _month = widget.initialMonth.month;
   }
 
-  String _monthName(int month) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-
-    return months[month - 1];
-  }
-
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Select Month'),
+      title: const Text('महिना निवडा'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -467,7 +494,7 @@ class _MonthYearPickerDialogState extends State<_MonthYearPickerDialog> {
           DropdownButtonFormField<int>(
             initialValue: _month,
             decoration: const InputDecoration(
-              labelText: 'Month',
+              labelText: 'महिना',
               border: OutlineInputBorder(),
             ),
             items: List.generate(12, (index) {
@@ -475,7 +502,7 @@ class _MonthYearPickerDialogState extends State<_MonthYearPickerDialog> {
 
               return DropdownMenuItem<int>(
                 value: month,
-                child: Text(_monthName(month)),
+                child: Text(MarathiConstants.getMonthName(month)),
               );
             }),
             onChanged: (value) {
@@ -495,13 +522,13 @@ class _MonthYearPickerDialogState extends State<_MonthYearPickerDialog> {
           onPressed: () {
             Navigator.of(context).pop();
           },
-          child: const Text('Cancel'),
+          child: const Text('रद्द करा'),
         ),
         FilledButton(
           onPressed: () {
             Navigator.of(context).pop(DateTime(_year, _month, 1));
           },
-          child: const Text('Select'),
+          child: const Text('निवडा'),
         ),
       ],
     );

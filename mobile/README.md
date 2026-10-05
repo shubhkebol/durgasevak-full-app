@@ -1,17 +1,21 @@
-# mobile
+# 🚩 Durgasevak Mobile App (दुर्गसेवक)
 
-A new Flutter project.
+This directory contains the Flutter mobile client application for Durgasevak.
 
-## Getting Started
+For full architectural documentation, feature lists, and maintenance instructions, please refer to the [Root README](../README.md) and [MAINTENANCE.md](../MAINTENANCE.md).
 
-This project is a starting point for a Flutter application.
+## Quick Build Instructions
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+# Get dependencies
+flutter pub get
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+# Analyze code
+flutter analyze
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# Build universal release APK
+flutter build apk --release
+
+# Build split APKs
+flutter build apk --split-per-abi
+```

@@ -16,10 +16,7 @@ class BackendSyncService {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: {
-        'username': username,
-        'password': password,
-      },
+      body: {'username': username, 'password': password},
     );
 
     if (response.statusCode == 200) {
@@ -40,7 +37,7 @@ class BackendSyncService {
       'POST',
       Uri.parse('$baseUrl/backup/import'),
     );
-    
+
     request.headers['Authorization'] = 'Bearer $token';
     request.files.add(
       await http.MultipartFile.fromPath(
@@ -58,14 +55,19 @@ class BackendSyncService {
     }
   }
 
-  Future<String> downloadLatestBackup(String destinationDir, String token) async {
+  Future<String> downloadLatestBackup(
+    String destinationDir,
+    String token,
+  ) async {
     final response = await http.get(
       Uri.parse('$baseUrl/backup/download_latest'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
     if (response.statusCode == 200) {
-      final destFile = File(path.join(destinationDir, 'durgasevak_downloaded.db'));
+      final destFile = File(
+        path.join(destinationDir, 'durgasevak_downloaded.db'),
+      );
       await destFile.writeAsBytes(response.bodyBytes);
       return destFile.path;
     } else {

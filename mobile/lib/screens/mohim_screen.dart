@@ -90,8 +90,9 @@ class _MohimScreenState extends State<MohimScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Unable to load Mohim: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('मोहीम माहिती लोड करण्यात अडचण आली: $e')),
+      );
     }
   }
 
@@ -140,23 +141,23 @@ class _MohimScreenState extends State<MohimScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Deactivate Mohim'),
+          title: const Text('मोहीम निष्क्रिय करा'),
           content: Text(
-            'Are you sure you want to deactivate '
-            '"${mohim.name}"?',
+            'तुम्हाला खात्री आहे की '
+            '"${mohim.name}" ही मोहीम निष्क्रिय करायची आहे?',
           ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop(false);
               },
-              child: const Text('Cancel'),
+              child: const Text('रद्द करा'),
             ),
             FilledButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop(true);
               },
-              child: const Text('Deactivate'),
+              child: const Text('निष्क्रिय करा'),
             ),
           ],
         );
@@ -175,7 +176,7 @@ class _MohimScreenState extends State<MohimScreen> {
       }
 
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Mohim deactivated')));
+          .showSnackBar(const SnackBar(content: Text('मोहीम निष्क्रिय केली')));
 
       await _loadData();
     } catch (e) {
@@ -183,9 +184,9 @@ class _MohimScreenState extends State<MohimScreen> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Unable to deactivate Mohim: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('मोहीम निष्क्रिय करण्यात अडचण आली: $e')),
+      );
     }
   }
 
@@ -218,16 +219,16 @@ class _MohimScreenState extends State<MohimScreen> {
     }
 
     if (start.isNotEmpty) {
-      return 'Started: $start';
+      return 'सुरू: $start';
     }
 
-    return 'Ends: $end';
+    return 'समाप्ती: $end';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mohim')),
+      appBar: AppBar(title: const Text('मोहीम')),
       body: AppBackground(
         child: Column(
           children: [
@@ -240,8 +241,8 @@ class _MohimScreenState extends State<MohimScreen> {
                 },
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: 'Search Mohim',
-                  hintText: 'Name or description',
+                  labelText: 'मोहीम शोधा',
+                  hintText: 'नाव किंवा वर्णन',
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searchController.text.isEmpty
                       ? null
@@ -265,7 +266,7 @@ class _MohimScreenState extends State<MohimScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => _showMohimForm(),
               icon: const Icon(Icons.add),
-              label: const Text('Add Mohim'),
+              label: const Text('मोहीम जोडा'),
             )
           : null,
     );
@@ -287,14 +288,14 @@ class _MohimScreenState extends State<MohimScreen> {
             SizedBox(height: 16),
             Center(
               child: Text(
-                'No Mohim found',
+                'कोणतीही मोहीम आढळली नाही',
                 style: TextStyle(color: Colors.white, fontSize: 18),
               ),
             ),
             SizedBox(height: 8),
             Center(
               child: Text(
-                'Add a Mohim to get started.',
+                'सुरुवात करण्यासाठी नवीन मोहीम जोडा.',
                 style: TextStyle(color: Colors.white70),
               ),
             ),
@@ -357,7 +358,7 @@ class _MohimScreenState extends State<MohimScreen> {
                         Icon(Icons.fact_check_outlined, size: 15),
                         SizedBox(width: 6),
                         Text(
-                          'Tap to view attendance',
+                          'हजेरी पाहण्यासाठी टॅप करा',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
@@ -388,7 +389,7 @@ class _MohimScreenState extends State<MohimScreen> {
                             children: [
                               Icon(Icons.edit),
                               SizedBox(width: 12),
-                              Text('Edit'),
+                              Text('संपादित करा'),
                             ],
                           ),
                         ),
@@ -398,7 +399,7 @@ class _MohimScreenState extends State<MohimScreen> {
                             children: [
                               Icon(Icons.delete_outline),
                               SizedBox(width: 12),
-                              Text('Deactivate'),
+                              Text('निष्क्रिय करा'),
                             ],
                           ),
                         ),
@@ -507,7 +508,7 @@ class _MohimFormDialogState extends State<MohimFormDialog> {
 
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a Mohim name')),
+        const SnackBar(content: Text('कृपया मोहिमेचे नाव प्रविष्ट करा')),
       );
 
       return;
@@ -517,7 +518,11 @@ class _MohimFormDialogState extends State<MohimFormDialog> {
         _endDate != null &&
         _endDate!.isBefore(_startDate!)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('End date cannot be before start date')),
+        const SnackBar(
+          content: Text(
+            'समाप्ती तारीख सुरुवातीच्या तारखेच्या आधी असू शकत नाही',
+          ),
+        ),
       );
 
       return;
@@ -559,14 +564,15 @@ class _MohimFormDialogState extends State<MohimFormDialog> {
         _isSaving = false;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Unable to save Mohim: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('मोहीम जतन करण्यात अडचण आली: $e')));
     }
   }
 
   String _formatDate(DateTime? date) {
     if (date == null) {
-      return 'Not selected';
+      return 'निवडलेली नाही';
     }
 
     return '${date.day.toString().padLeft(2, '0')}/'
@@ -597,7 +603,7 @@ class _MohimFormDialogState extends State<MohimFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(_isEditing ? 'Edit Mohim' : 'Add Mohim'),
+      title: Text(_isEditing ? 'मोहीम संपादित करा' : 'मोहीम जोडा'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -607,22 +613,22 @@ class _MohimFormDialogState extends State<MohimFormDialog> {
               enabled: !_isSaving,
               textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(
-                labelText: 'Mohim Name',
-                hintText: 'e.g. Ganesh Utsav Mohim',
+                labelText: 'मोहिमेचे नाव',
+                hintText: 'उदा. दुर्ग स्वच्छता मोहीम',
                 prefixIcon: Icon(Icons.campaign),
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
             _dateSelector(
-              label: 'Start Date',
+              label: 'सुरुवात तारीख',
               date: _startDate,
               onTap: _selectStartDate,
               icon: Icons.calendar_today,
             ),
             const SizedBox(height: 16),
             _dateSelector(
-              label: 'End Date',
+              label: 'समाप्ती तारीख',
               date: _endDate,
               onTap: _selectEndDate,
               icon: Icons.event,
@@ -634,8 +640,8 @@ class _MohimFormDialogState extends State<MohimFormDialog> {
               maxLines: 4,
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
-                labelText: 'Description',
-                hintText: 'Optional',
+                labelText: 'वर्णन',
+                hintText: 'ऐच्छिक',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -649,7 +655,7 @@ class _MohimFormDialogState extends State<MohimFormDialog> {
               : () {
                   Navigator.of(context).pop(false);
                 },
-          child: const Text('Cancel'),
+          child: const Text('रद्द करा'),
         ),
         FilledButton(
           onPressed: _isSaving ? null : _save,
@@ -659,7 +665,7 @@ class _MohimFormDialogState extends State<MohimFormDialog> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(_isEditing ? 'Update' : 'Save'),
+              : Text(_isEditing ? 'अपडेट करा' : 'जतन करा'),
         ),
       ],
     );

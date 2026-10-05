@@ -98,8 +98,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Unable to load expenses: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('खर्च लोड करण्यात अडचण आली: $e')));
     }
   }
 
@@ -131,12 +132,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Deactivate Expense'),
+          title: const Text('खर्च निष्क्रिय करा'),
 
           content: Text(
-            'Are you sure you want to deactivate '
-            'this expense of '
-            '₹${expense.amount.toStringAsFixed(2)}?',
+            'तुम्हाला खात्री आहे की हा '
+            '₹${expense.amount.toStringAsFixed(2)} चा खर्च '
+            'निष्क्रिय करायचा आहे?',
           ),
 
           actions: [
@@ -145,7 +146,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 Navigator.of(dialogContext).pop(false);
               },
 
-              child: const Text('Cancel'),
+              child: const Text('रद्द करा'),
             ),
 
             FilledButton(
@@ -153,7 +154,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 Navigator.of(dialogContext).pop(true);
               },
 
-              child: const Text('Deactivate'),
+              child: const Text('निष्क्रिय करा'),
             ),
           ],
         );
@@ -172,7 +173,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       }
 
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Expense deactivated')));
+          .showSnackBar(const SnackBar(content: Text('खर्च निष्क्रिय केला')));
 
       await _loadData();
     } catch (e) {
@@ -181,7 +182,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to deactivate expense: $e')),
+        SnackBar(content: Text('खर्च निष्क्रिय करण्यात अडचण आली: $e')),
       );
     }
   }
@@ -201,7 +202,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Expenses')),
+      appBar: AppBar(title: const Text('खर्च')),
 
       body: AppBackground(
         child: Column(
@@ -217,9 +218,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 },
 
                 decoration: InputDecoration(
-                  labelText: 'Search expenses',
+                  labelText: 'खर्च शोधा',
 
-                  hintText: 'Category, amount or note',
+                  hintText: 'प्रवर्ग, रक्कम किंवा नोंद',
 
                   prefixIcon: const Icon(Icons.search),
 
@@ -259,7 +260,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
                           children: [
                             const Text(
-                              'Total Expenses',
+                              'एकूण खर्च',
 
                               style: TextStyle(fontSize: 14),
                             ),
@@ -297,7 +298,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
               icon: const Icon(Icons.add),
 
-              label: const Text('Add Expense'),
+              label: const Text('खर्च जोडा'),
             )
           : null,
     );
@@ -323,12 +324,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             SizedBox(height: 16),
 
             Center(
-              child: Text('No expenses found', style: TextStyle(fontSize: 18)),
+              child: Text(
+                'कोणताही खर्च आढळला नाही',
+                style: TextStyle(fontSize: 18),
+              ),
             ),
 
             SizedBox(height: 8),
 
-            Center(child: Text('Add an expense to get started.')),
+            Center(child: Text('सुरुवात करण्यासाठी खर्च जोडा.')),
           ],
         ),
       );
@@ -359,7 +363,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     child: Text(
                       expense.category?.trim().isNotEmpty == true
                           ? expense.category!
-                          : 'Expense',
+                          : 'खर्च',
 
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
@@ -416,7 +420,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
                               SizedBox(width: 12),
 
-                              Text('Edit'),
+                              Text('संपादित करा'),
                             ],
                           ),
                         ),
@@ -430,7 +434,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
                               SizedBox(width: 12),
 
-                              Text('Deactivate'),
+                              Text('निष्क्रिय करा'),
                             ],
                           ),
                         ),
@@ -530,7 +534,7 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
 
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid expense amount')),
+        const SnackBar(content: Text('कृपया वैध खर्च रक्कम प्रविष्ट करा')),
       );
 
       return;
@@ -540,7 +544,7 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
 
     if (category.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter an expense category')),
+        const SnackBar(content: Text('कृपया खर्चाचा प्रवर्ग प्रविष्ट करा')),
       );
 
       return;
@@ -587,8 +591,9 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
         _isSaving = false;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Unable to save expense: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('खर्च जतन करण्यात अडचण आली: $e')));
     }
   }
 
@@ -601,7 +606,7 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(_isEditing ? 'Edit Expense' : 'Add Expense'),
+      title: Text(_isEditing ? 'खर्च संपादित करा' : 'खर्च जोडा'),
 
       content: SingleChildScrollView(
         child: Column(
@@ -616,9 +621,9 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
               textCapitalization: TextCapitalization.words,
 
               decoration: const InputDecoration(
-                labelText: 'Category',
+                labelText: 'प्रवर्ग',
 
-                hintText: 'e.g. Travel, Food, Event',
+                hintText: 'उदा. प्रवास, भोजन, कार्यक्रम',
 
                 prefixIcon: Icon(Icons.category_outlined),
 
@@ -638,7 +643,7 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
               enabled: !_isSaving,
 
               decoration: const InputDecoration(
-                labelText: 'Amount',
+                labelText: 'रक्कम',
 
                 prefixText: '₹ ',
 
@@ -655,7 +660,7 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
 
               child: InputDecorator(
                 decoration: const InputDecoration(
-                  labelText: 'Date',
+                  labelText: 'तारीख',
 
                   prefixIcon: Icon(Icons.calendar_today),
 
@@ -676,9 +681,9 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
               maxLines: 3,
 
               decoration: const InputDecoration(
-                labelText: 'Note',
+                labelText: 'नोंद',
 
-                hintText: 'Optional',
+                hintText: 'ऐच्छिक',
 
                 border: OutlineInputBorder(),
               ),
@@ -695,7 +700,7 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
                   Navigator.of(context).pop(false);
                 },
 
-          child: const Text('Cancel'),
+          child: const Text('रद्द करा'),
         ),
 
         FilledButton(
@@ -709,7 +714,7 @@ class _ExpenseFormDialogState extends State<ExpenseFormDialog> {
 
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(_isEditing ? 'Update' : 'Save'),
+              : Text(_isEditing ? 'अपडेट करा' : 'जतन करा'),
         ),
       ],
     );

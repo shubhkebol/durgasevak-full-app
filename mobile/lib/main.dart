@@ -4,6 +4,7 @@ import 'database/database_service.dart';
 import 'screens/dashboard_screen.dart';
 import 'services/auth_service.dart';
 import 'services/file_intent_service.dart';
+import 'widgets/admin_selection_sheet.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,9 +28,10 @@ class DurgasevakApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Durgasevak',
+      title: 'दुर्गसेवक',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        fontFamily: 'Mukta',
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepOrange,
           brightness: Brightness.dark,
@@ -39,22 +41,14 @@ class DurgasevakApp extends StatelessWidget {
         inputDecorationTheme: const InputDecorationTheme(
           filled: true,
           fillColor: Color(0xFF171717),
-          labelStyle: TextStyle(
-            color: Colors.white70,
-          ),
-          hintStyle: TextStyle(
-            color: Colors.white54,
-          ),
+          labelStyle: TextStyle(color: Colors.white70),
+          hintStyle: TextStyle(color: Colors.white54),
           prefixIconColor: Colors.white70,
           enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.white38,
-            ),
+            borderSide: BorderSide(color: Colors.white38),
           ),
           focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.deepOrange,
-            ),
+            borderSide: BorderSide(color: Colors.deepOrange),
           ),
         ),
       ),
@@ -94,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter username and password'),
+          content: Text('कृपया वापरकर्ता नाव आणि पासवर्ड प्रविष्ट करा'),
         ),
       );
       return;
@@ -104,10 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoggingIn = true;
     });
 
-    final user = await _authService.login(
-      username,
-      password,
-    );
+    final user = await _authService.login(username, password);
 
     if (!mounted) return;
 
@@ -117,9 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid username or password'),
-        ),
+        const SnackBar(content: Text('चुकीचे वापरकर्ता नाव किंवा पासवर्ड')),
       );
       return;
     }
@@ -142,23 +131,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => DashboardScreen(
-            user: user,
-            initialBackupPath: incomingFile,
-          ),
+          builder: (_) =>
+              DashboardScreen(user: user, initialBackupPath: incomingFile),
         ),
       );
 
       return;
     }
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => DashboardScreen(
-          user: user,
-        ),
-      ),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => DashboardScreen(user: user)));
   }
 
   @override
@@ -171,28 +153,17 @@ class _LoginScreenState extends State<LoginScreen> {
         fit: StackFit.expand,
         children: [
           // Plain black login background.
-          const ColoredBox(
-            color: Colors.black,
-          ),
+          const ColoredBox(color: Colors.black),
 
           SafeArea(
             child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                24,
-                28,
-                24,
-                24 + bottomInset,
-              ),
+              padding: EdgeInsets.fromLTRB(24, 28, 24, 24 + bottomInset),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 430,
-                ),
+                constraints: const BoxConstraints(maxWidth: 430),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(
-                      height: 55,
-                    ),
+                    const SizedBox(height: 55),
 
                     /*
                      * Main Durgasevak logo.
@@ -201,17 +172,13 @@ class _LoginScreenState extends State<LoginScreen> {
                      * removed. This is now the only logo
                      * displayed on the login screen.
                      */
-
                     Center(
                       child: Container(
                         width: 170,
                         height: 170,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white24,
-                            width: 1,
-                          ),
+                          border: Border.all(color: Colors.white24, width: 1),
                         ),
                         clipBehavior: Clip.antiAlias,
                         child: Image.asset(
@@ -222,78 +189,58 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(
-                      height: 22,
-                    ),
+                    const SizedBox(height: 22),
 
                     const Text(
-                      'DURGASEVAK',
+                      'दुर्गसेवक',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 30,
+                        fontSize: 32,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 2,
                       ),
                     ),
 
-                    const SizedBox(
-                      height: 6,
-                    ),
+                    const SizedBox(height: 6),
 
                     const Text(
-                      'Management System',
+                      'व्यवस्थापन प्रणाली',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 15,
-                      ),
+                      style: TextStyle(color: Colors.white70, fontSize: 16),
                     ),
 
-                    const SizedBox(
-                      height: 28,
-                    ),
+                    const SizedBox(height: 28),
 
                     TextField(
                       controller: _usernameController,
                       enabled: !_isLoggingIn,
                       textInputAction: TextInputAction.next,
-                      style: const TextStyle(
-                        color: Colors.white,
-                      ),
+                      style: const TextStyle(color: Colors.white),
                       decoration: const InputDecoration(
-                        labelText: 'Username',
-                        prefixIcon: Icon(
-                          Icons.person_outline,
-                        ),
+                        labelText: 'वापरकर्ता नाव',
+                        prefixIcon: Icon(Icons.person_outline),
                       ),
                     ),
 
-                    const SizedBox(
-                      height: 14,
-                    ),
+                    const SizedBox(height: 14),
 
                     TextField(
                       controller: _passwordController,
                       enabled: !_isLoggingIn,
                       obscureText: _obscurePassword,
                       textInputAction: TextInputAction.done,
-                      style: const TextStyle(
-                        color: Colors.white,
-                      ),
+                      style: const TextStyle(color: Colors.white),
                       onSubmitted: (_) => _login(),
                       decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: const Icon(
-                          Icons.lock_outline,
-                        ),
+                        labelText: 'पासवर्ड',
+                        prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           onPressed: _isLoggingIn
                               ? null
                               : () {
                                   setState(() {
-                                    _obscurePassword =
-                                        !_obscurePassword;
+                                    _obscurePassword = !_obscurePassword;
                                   });
                                 },
                           icon: Icon(
@@ -305,15 +252,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(
-                      height: 18,
-                    ),
+                    const SizedBox(height: 18),
 
                     SizedBox(
                       height: 52,
                       child: FilledButton(
-                        onPressed:
-                            _isLoggingIn ? null : _login,
+                        onPressed: _isLoggingIn ? null : _login,
                         child: _isLoggingIn
                             ? const SizedBox(
                                 width: 22,
@@ -323,13 +267,32 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               )
                             : const Text(
-                                'LOGIN',
+                                'लॉगिन करा',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1,
                                 ),
                               ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton.icon(
+                      onPressed: _isLoggingIn
+                          ? null
+                          : () => AdminSelectionSheet.show(
+                              context,
+                              viewerEmail: '',
+                              isLoginScreen: true,
+                            ),
+                      icon: const Icon(
+                        Icons.admin_panel_settings_outlined,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
+                      label: const Text(
+                        'अधिकृत ॲडमिन संपर्क (WhatsApp)',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                     ),
                   ],

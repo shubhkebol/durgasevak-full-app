@@ -54,7 +54,7 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
         _isLoading = false;
       });
 
-      _showMessage('Unable to load committee: $e', isError: true);
+      _showMessage('समिती माहिती लोड करण्यात अडचण आली: $e', isError: true);
     }
   }
 
@@ -117,9 +117,7 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
       if (!mounted) return;
 
       _showMessage(
-        committee == null
-            ? 'Committee member added.'
-            : 'Committee member updated.',
+        committee == null ? 'समिती सदस्य जोडला.' : 'समिती सदस्य अपडेट केला.',
       );
     } catch (e) {
       if (!mounted) return;
@@ -127,8 +125,7 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
       String message = e.toString();
 
       if (message.startsWith('DatabaseException')) {
-        message =
-            'This position or member is already assigned in the committee.';
+        message = 'हे पद किंवा सदस्य समितीमध्ये आधीच नियुक्त आहे.';
       }
 
       _showMessage(message, isError: true);
@@ -140,23 +137,23 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Remove Committee Member'),
+          title: const Text('समिती सदस्य काढा'),
           content: Text(
-            'Remove ${committee.memberName} from the '
-            '${committee.position} position?',
+            '${committee.memberName} यांना '
+            '${committee.position} या पदावरून काढायचे आहे का?',
           ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop(false);
               },
-              child: const Text('Cancel'),
+              child: const Text('रद्द करा'),
             ),
             FilledButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop(true);
               },
-              child: const Text('Remove'),
+              child: const Text('काढा'),
             ),
           ],
         );
@@ -174,11 +171,11 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
 
       if (!mounted) return;
 
-      _showMessage('Committee member removed.');
+      _showMessage('समिती सदस्य काढला.');
     } catch (e) {
       if (!mounted) return;
 
-      _showMessage('Unable to remove committee member: $e', isError: true);
+      _showMessage('समिती सदस्य काढण्यात अडचण आली: $e', isError: true);
     }
   }
 
@@ -199,10 +196,10 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Committee'),
+        title: const Text('समिती'),
         actions: [
           IconButton(
-            tooltip: 'Refresh',
+            tooltip: 'रिफ्रेश करा',
             onPressed: _isLoading ? null : _loadCommittee,
             icon: const Icon(Icons.refresh),
           ),
@@ -228,7 +225,7 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
                             const SizedBox(height: 16),
                             const Center(
                               child: Text(
-                                'No committee members added yet.',
+                                'अद्याप कोणतेही समिती सदस्य जोडलेले नाहीत.',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 17,
@@ -240,7 +237,7 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
                               FilledButton.icon(
                                 onPressed: _addCommitteeMember,
                                 icon: const Icon(Icons.add),
-                                label: const Text('Add Committee Member'),
+                                label: const Text('समिती सदस्य जोडा'),
                               ),
                             ],
                           ],
@@ -261,7 +258,7 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
           ? FloatingActionButton.extended(
               onPressed: _addCommitteeMember,
               icon: const Icon(Icons.add),
-              label: const Text('Add'),
+              label: const Text('जोडा'),
             )
           : null,
     );
@@ -280,13 +277,12 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Committee',
+                    'समिती',
                     style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${_committee.length} committee '
-                    '${_committee.length == 1 ? 'member' : 'members'}',
+                    '${_committee.length} समिती सदस्य',
                     style: const TextStyle(color: Colors.grey),
                   ),
                 ],
@@ -332,7 +328,7 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
                         children: [
                           Icon(Icons.edit),
                           SizedBox(width: 10),
-                          Text('Edit'),
+                          Text('संपादित करा'),
                         ],
                       ),
                     ),
@@ -342,7 +338,7 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
                         children: [
                           Icon(Icons.delete_outline),
                           SizedBox(width: 10),
-                          Text('Remove'),
+                          Text('काढा'),
                         ],
                       ),
                     ),
@@ -415,7 +411,7 @@ class _CommitteeDialogState extends State<_CommitteeDialog> {
 
     return AlertDialog(
       title: Text(
-        widget.isEditing ? 'Edit Committee Member' : 'Add Committee Member',
+        widget.isEditing ? 'समिती सदस्य संपादित करा' : 'समिती सदस्य जोडा',
       ),
       content: SizedBox(
         width: 500,
@@ -427,21 +423,21 @@ class _CommitteeDialogState extends State<_CommitteeDialog> {
               controller: _positionController,
               textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(
-                labelText: 'Position',
-                hintText: 'e.g. President',
+                labelText: 'पद',
+                hintText: 'उदा. अध्यक्ष, सचिव, खजिनदार',
                 prefixIcon: Icon(Icons.badge_outlined),
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
             const Text(
-              'Select Person',
+              'व्यक्ती निवडा',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             TextField(
               decoration: const InputDecoration(
-                hintText: 'Search member',
+                hintText: 'सदस्य शोधा',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
@@ -454,7 +450,9 @@ class _CommitteeDialogState extends State<_CommitteeDialog> {
             const SizedBox(height: 8),
             Expanded(
               child: filteredMembers.isEmpty
-                  ? const Center(child: Text('No active members found.'))
+                  ? const Center(
+                      child: Text('कोणतेही सक्रिय सदस्य आढळले नाहीत.'),
+                    )
                   : ListView.builder(
                       itemCount: filteredMembers.length,
                       itemBuilder: (context, index) {
@@ -500,11 +498,11 @@ class _CommitteeDialogState extends State<_CommitteeDialog> {
           onPressed: () {
             Navigator.of(context).pop();
           },
-          child: const Text('Cancel'),
+          child: const Text('रद्द करा'),
         ),
         FilledButton(
           onPressed: _save,
-          child: Text(widget.isEditing ? 'Update' : 'Save'),
+          child: Text(widget.isEditing ? 'अपडेट करा' : 'जतन करा'),
         ),
       ],
     );
@@ -514,12 +512,12 @@ class _CommitteeDialogState extends State<_CommitteeDialog> {
     final position = _positionController.text.trim();
 
     if (position.isEmpty) {
-      _showError('Enter a position.');
+      _showError('कृपया पद प्रविष्ट करा.');
       return;
     }
 
     if (_selectedMember == null) {
-      _showError('Select a person from Members.');
+      _showError('कृपया सदस्यांमधून व्यक्ती निवडा.');
       return;
     }
 

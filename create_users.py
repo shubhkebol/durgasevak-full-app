@@ -10,7 +10,7 @@ USERS = [
         "role": "viewer",
     },
     {
-        "username": "Admin",
+        "username": "Admin@1",
         "password": "Chatrapati",
         "role": "editor",
     },

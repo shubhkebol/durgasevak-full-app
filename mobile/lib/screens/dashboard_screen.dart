@@ -2,17 +2,21 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import 'package:path/path.dart' as path;
+
 import '../repositories/dashboard_repository.dart';
 import '../services/auth_service.dart';
-import '../services/backend_sync_service.dart';
 import '../services/database_backup_service.dart';
 import '../services/file_intent_service.dart';
+import '../services/google_drive_service.dart';
+import '../services/sync_metadata_service.dart';
 import '../widgets/app_background.dart';
 import 'committee_screen.dart';
 import 'data_sync_screen.dart';
 import 'donations_screen.dart';
 import 'expenses_screen.dart';
 import 'members_screen.dart';
+import 'missed_donations_screen.dart';
 import 'mohim_screen.dart';
 import 'reports_screen.dart';
 
@@ -99,48 +103,227 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _quickFetchFromCloud() async {
+  String _cleanError(Object error) {
+    final text = error.toString();
+    if (text.startsWith('Exception: ')) {
+      return text.substring('Exception: '.length);
+    }
+    return text;
+  }
+
+  Future<void> _quickFetchFromDrive() async {
     if (_isLoading) return;
-    
+
     setState(() {
       _isLoading = true;
     });
-    
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Fetching latest data from cloud...'),
-        duration: Duration(seconds: 2),
+        content: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'गुगल ड्राइव्हवरून डेटा आणत आहे...\n(Fetching data from Google Drive...)',
+                style: TextStyle(fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        duration: Duration(seconds: 25),
       ),
     );
 
     try {
-      final syncService = BackendSyncService.instance;
-      // Viewers can use the default viewer account
-      final token = await syncService.login('Durgasevak', 'Durgasevak');
-      
-      final tempDirectory = Directory.systemTemp;
-      final downloadedPath = await syncService.downloadLatestBackup(tempDirectory.path, token);
+      final driveService = GoogleDriveService.instance;
+      await driveService.connect(isAdmin: widget.user.isAdmin);
 
-      if (!mounted) return;
+      final fileId = await driveService.findBackupFile();
+      if (fileId == null) {
+        throw Exception(
+          widget.user.isAdmin
+              ? 'गुगल ड्राइव्हवर दुर्गसेवक बॅकअप सापडला नाही. कृपया डेटा सिंक स्क्रीनवरून प्रथम बॅकअप अपलोड करा.'
+              : 'गुगल ड्राइव्हवर दुर्गसेवक बॅकअप सापडला नाही. कृपया ॲडमिनकडे तुमच्या ईमेलसाठी परवानगी मागा.',
+        );
+      }
+
+      final tempDirectory = Directory.systemTemp;
+      final targetPath = path.join(
+        tempDirectory.path,
+        'durgasevak_gdrive_${DateTime.now().millisecondsSinceEpoch}.db',
+      );
+
+      final downloadedPath = await driveService.downloadBackup(
+        fileId,
+        targetPath,
+      );
 
       final backupService = DatabaseBackupService.instance;
       await backupService.restoreBackup(downloadedPath);
-      
+
+      final tempFile = File(downloadedPath);
+      if (await tempFile.exists()) {
+        await tempFile.delete();
+      }
+
       if (!mounted) return;
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Dashboard successfully updated from cloud!')),
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.greenAccent),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'गुगल ड्राइव्हवरून डेटा यशस्वीरीत्या अपडेट झाला!\n(Data fetched successfully from Google Drive!)',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Color(0xFF1B5E20),
+          duration: Duration(seconds: 4),
+        ),
       );
 
       await _loadDashboard();
-      
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to fetch from cloud: $e')),
+        SnackBar(
+          content: Text(
+            'डेटा आणताना अडचण आली: ${_cleanError(e)}',
+            style: const TextStyle(fontSize: 13),
+          ),
+          backgroundColor: Colors.red.shade800,
+          duration: const Duration(seconds: 5),
+        ),
       );
+    }
+  }
+
+  Future<void> _quickUploadToDrive() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'गुगल ड्राइव्हवर डेटा सेव्ह करत आहे...\n(Uploading and updating data to server...)',
+                style: TextStyle(fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        duration: Duration(seconds: 30),
+      ),
+    );
+
+    String? backupPath;
+    try {
+      final driveService = GoogleDriveService.instance;
+      final account = await driveService.connect(isAdmin: true);
+
+      final backupService = DatabaseBackupService.instance;
+      backupPath = await backupService.createBackup();
+
+      final now = DateTime.now().toIso8601String();
+      final metadataService = SyncMetadataService.instance;
+      await metadataService.set('last_exported_at', now);
+      await metadataService.set('official_admin_gmail', account.email);
+
+      final version = await backupService.getBackupDataVersion(backupPath);
+      if (version != null) {
+        await metadataService.set('local_data_version', version);
+      }
+
+      final folderId = await driveService.getOrCreateFolder();
+      await driveService.uploadBackup(backupPath, folderId);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.greenAccent),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'गुगल ड्राइव्हवर डेटा यशस्वीरीत्या सेव्ह झाला!\n(Data successfully updated to server! - ${account.email})',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF1B5E20),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+
+      await _loadDashboard();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'डेटा सेव्ह करताना अडचण आली: ${_cleanError(e)}',
+            style: const TextStyle(fontSize: 13),
+          ),
+          backgroundColor: Colors.red.shade800,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    } finally {
+      if (backupPath != null) {
+        final file = File(backupPath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
     }
   }
 
@@ -232,7 +415,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final name = row['donor_name'] as String?;
 
       if (name == null || name.trim().isEmpty) {
-        return 'Other Donor';
+        return 'इतर देणगीदार';
       }
 
       return name;
@@ -241,7 +424,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final name = row['member_name'] as String?;
 
     if (name == null || name.trim().isEmpty) {
-      return 'Member';
+      return 'सदस्य';
     }
 
     return name;
@@ -253,21 +436,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Durgasevak'),
+        title: const Text('दुर्गसेवक'),
         actions: [
-          if (widget.user.isViewer)
+          if (widget.user.isAdmin)
             IconButton(
-              tooltip: 'Fetch from Cloud',
-              onPressed: _isLoading ? null : _quickFetchFromCloud,
+              tooltip: 'गुगल ड्राइव्हवर डेटा सेव्ह करा',
+              onPressed: _isLoading ? null : _quickUploadToDrive,
+              icon: const Icon(Icons.cloud_upload),
+            )
+          else if (widget.user.isViewer)
+            IconButton(
+              tooltip: 'गुगल ड्राइव्हवरून डेटा आणा',
+              onPressed: _isLoading ? null : _quickFetchFromDrive,
               icon: const Icon(Icons.cloud_download),
             ),
           IconButton(
-            tooltip: 'Refresh Local',
+            tooltip: 'रिफ्रेश करा',
             onPressed: _isLoading ? null : _loadDashboard,
             icon: const Icon(Icons.refresh),
           ),
           IconButton(
-            tooltip: 'Logout',
+            tooltip: 'लॉगआउट',
             onPressed: _logout,
             icon: const Icon(Icons.logout),
           ),
@@ -275,7 +464,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: AppBackground(
         child: RefreshIndicator(
-          onRefresh: widget.user.isViewer ? _quickFetchFromCloud : _loadDashboard,
+          onRefresh: widget.user.isAdmin
+              ? _quickUploadToDrive
+              : _quickFetchFromDrive,
           child: _isLoading && summary == null
               ? ListView(
                   children: [
@@ -292,7 +483,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 16),
                     const Center(
                       child: Text(
-                        'Unable to load dashboard',
+                        'डॅशबोर्ड लोड करण्यात अडचण आली',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -303,7 +494,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 16),
                     FilledButton(
                       onPressed: _loadDashboard,
-                      child: const Text('Retry'),
+                      child: const Text('पुन्हा प्रयत्न करा'),
                     ),
                   ],
                 )
@@ -332,7 +523,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildHeader() {
     return Row(
       children: [
-                ClipRRect(
+        ClipRRect(
           borderRadius: BorderRadius.circular(14),
           child: Image.asset(
             widget.user.isAdmin
@@ -349,7 +540,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Welcome back',
+                'पुन्हा स्वागत आहे',
                 style: TextStyle(color: Colors.white70, fontSize: 14),
               ),
               const SizedBox(height: 3),
@@ -363,7 +554,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 2),
               Text(
-                widget.user.isAdmin ? 'Administrator' : 'Viewer',
+                widget.user.isAdmin ? 'प्रशासक' : 'निरीक्षक',
                 style: const TextStyle(
                   color: Colors.deepOrangeAccent,
                   fontWeight: FontWeight.w600,
@@ -388,7 +579,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Icon(Icons.account_balance_wallet_outlined),
                 SizedBox(width: 8),
                 Text(
-                  'Current Balance',
+                  'सध्याची शिल्लक',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ],
@@ -400,7 +591,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Active donations minus active expenses',
+              'सक्रिय देणग्या उणे सक्रिय खर्च',
               style: TextStyle(color: Colors.grey),
             ),
           ],
@@ -414,31 +605,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         _statTile(
           Icons.people_outline,
-          'Active Members',
+          'सक्रिय सदस्य',
           '${summary.activeMembers}',
         ),
         const SizedBox(height: 8),
         _statTile(
           Icons.volunteer_activism,
-          'Total Donations',
+          'एकूण देणग्या',
           _money(summary.totalDonations),
         ),
         const SizedBox(height: 8),
         _statTile(
           Icons.receipt_long,
-          'Total Expenses',
+          'एकूण खर्च',
           _money(summary.totalExpenses),
         ),
         const SizedBox(height: 8),
         _statTile(
           Icons.calendar_month,
-          'Monthly Donations',
+          'मासिक देणग्या',
           _money(summary.monthlyDonations),
         ),
         const SizedBox(height: 8),
         _statTile(
           Icons.person_outline,
-          'Other Donations',
+          'इतर देणग्या',
           _money(summary.otherDonations),
         ),
       ],
@@ -462,37 +653,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildModules() {
     final modules = [
       _Module(
-        'Members',
+        'सदस्य',
         Icons.people_outline,
         () => _open(MembersScreen(user: widget.user)),
       ),
       _Module(
-        'Donations',
+        'देणग्या',
         Icons.volunteer_activism,
         () => _open(DonationsScreen(user: widget.user)),
       ),
       _Module(
-        'Expenses',
+        'खर्च',
         Icons.receipt_long,
         () => _open(ExpensesScreen(user: widget.user)),
       ),
       _Module(
-        'Mohim',
+        'मोहीम',
         Icons.campaign,
         () => _open(MohimScreen(user: widget.user)),
       ),
       _Module(
-        'Committee',
+        'समिती',
         Icons.groups,
         () => _open(CommitteeScreen(user: widget.user)),
       ),
       _Module(
-        'Reports',
+        'अहवाल',
         Icons.assessment,
         () => _open(ReportsScreen(user: widget.user)),
       ),
       _Module(
-        'Data Sync',
+        'प्रलंबित देणग्या',
+        Icons.event_busy,
+        () => _open(MissedDonationsScreen(user: widget.user)),
+      ),
+      _Module(
+        'डेटा सिंक',
         Icons.sync,
         () => _open(DataSyncScreen(user: widget.user)),
       ),
@@ -502,7 +698,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Modules',
+          'विभाग',
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -549,9 +745,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildRecentDonations() {
     return _recentSection(
-      title: 'Recent Donations',
+      title: 'अलीकडील देणग्या',
       onViewAll: () => _open(DonationsScreen(user: widget.user)),
-      emptyText: 'No recent donations',
+      emptyText: 'एकही देणगी उपलब्ध नाही',
       children: _recentDonations.map((row) {
         final amount = (row['amount'] as num?)?.toDouble() ?? 0;
 
@@ -570,7 +766,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (monthly) ...[
                 const SizedBox(width: 8),
                 const Chip(
-                  label: Text('Monthly'),
+                  label: Text('मासिक'),
                   visualDensity: VisualDensity.compact,
                 ),
               ],
@@ -587,9 +783,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildRecentExpenses() {
     return _recentSection(
-      title: 'Recent Expenses',
+      title: 'अलीकडील खर्च',
       onViewAll: () => _open(ExpensesScreen(user: widget.user)),
-      emptyText: 'No recent expenses',
+      emptyText: 'एकही खर्च उपलब्ध नाही',
       children: _recentExpenses.map((row) {
         final amount = (row['amount'] as num?)?.toDouble() ?? 0;
 
@@ -598,7 +794,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return ListTile(
           leading: const CircleAvatar(child: Icon(Icons.receipt_long)),
           title: Text(
-            category == null || category.trim().isEmpty ? 'Expense' : category,
+            category == null || category.trim().isEmpty ? 'खर्च' : category,
           ),
           subtitle: Text(_formatDate(row['date'] as String?)),
           trailing: Text(
@@ -631,7 +827,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
-            TextButton(onPressed: onViewAll, child: const Text('View All')),
+            TextButton(onPressed: onViewAll, child: const Text('सर्व पहा')),
           ],
         ),
         const SizedBox(height: 8),

@@ -26,17 +26,14 @@ class Expense {
     };
   }
 
-  factory Expense.fromMap(
-    Map<String, dynamic> map,
-  ) {
+  factory Expense.fromMap(Map<String, dynamic> map) {
     return Expense(
       id: map['id'] as int?,
       amount: (map['amount'] as num).toDouble(),
       date: map['date'] as String,
       category: map['category'] as String?,
       note: map['note'] as String?,
-      active:
-          (map['active'] as int? ?? 1) == 1,
+      active: (map['active'] as int? ?? 1) == 1,
     );
   }
 }

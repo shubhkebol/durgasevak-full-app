@@ -24,13 +24,26 @@ class AuthService {
     // Passwords will be moved to a proper local credential
     // mechanism before production release.
 
-    const passwords = {'Durgasevak': 'Durgasevak', 'Admin': 'Chatrapati'};
+    const passwords = {
+      'Durgasevak': 'Durgasevak',
+      'Admin': 'Chatrapati',
+    };
 
     if (passwords[username] != password) {
       return null;
     }
 
     final db = await _databaseService.database;
+
+    // Migrate old Admin@1 to Admin if needed
+    if (username == 'Admin') {
+      await db.update(
+        'users',
+        {'username': 'Admin'},
+        where: 'username = ?',
+        whereArgs: ['Admin@1'],
+      );
+    }
 
     final results = await db.query(
       'users',
@@ -40,6 +53,15 @@ class AuthService {
     );
 
     if (results.isEmpty) {
+      // Auto-insert Admin if role is editor and password matched
+      if (username == 'Admin') {
+        final id = await db.insert('users', {
+          'username': username,
+          'role': 'editor',
+          'active': 1,
+        });
+        return AuthUser(id: id, username: username, role: 'editor');
+      }
       return null;
     }
 

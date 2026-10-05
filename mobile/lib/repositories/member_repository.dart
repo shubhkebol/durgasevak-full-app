@@ -57,12 +57,7 @@ class MemberRepository {
     final data = member.toMap();
     data.remove('id');
 
-    return db.update(
-      'members',
-      data,
-      where: 'id = ?',
-      whereArgs: [member.id],
-    );
+    return db.update('members', data, where: 'id = ?', whereArgs: [member.id]);
   }
 
   Future<int> deactivateMember(int id) async {

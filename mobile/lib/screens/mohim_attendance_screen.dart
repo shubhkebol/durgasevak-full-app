@@ -87,9 +87,9 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Unable to load attendance: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('हजेरी माहिती लोड करण्यात अडचण आली: $e')),
+      );
     }
   }
 
@@ -137,7 +137,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to update attendance: $e')),
+        SnackBar(content: Text('हजेरी अपडेट करण्यात अडचण आली: $e')),
       );
     } finally {
       if (mounted) {
@@ -157,7 +157,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
 
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter visitor name')),
+        const SnackBar(content: Text('कृपया अभ्यागताचे नाव प्रविष्ट करा')),
       );
 
       return;
@@ -194,8 +194,9 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
         _isSaving = false;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Unable to add visitor: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('अभ्यागत जोडण्यात अडचण आली: $e')));
     }
   }
 
@@ -235,7 +236,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Unable to remove visitor: $e')));
+      ).showSnackBar(SnackBar(content: Text('अभ्यागत काढण्यात अडचण आली: $e')));
     }
   }
 
@@ -268,10 +269,10 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
     }
 
     if (start.isNotEmpty) {
-      return 'Started: $start';
+      return 'सुरू: $start';
     }
 
-    return 'Ends: $end';
+    return 'समाप्ती: $end';
   }
 
   @override
@@ -285,7 +286,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
     final totalPresent = presentMemberCount + otherVisitorCount;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Attendance')),
+      appBar: AppBar(title: const Text('हजेरी')),
       body: AppBackground(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -393,7 +394,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Attendance Summary',
+              'हजेरी सारांश',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 14),
@@ -404,7 +405,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
                 Expanded(
                   child: Text(
                     '$presentMemberCount / '
-                    '$totalMemberCount Members Present',
+                    '$totalMemberCount सदस्य उपस्थित',
                   ),
                 ),
               ],
@@ -414,7 +415,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
               children: [
                 const Icon(Icons.person_add_alt_1, size: 20),
                 const SizedBox(width: 8),
-                Expanded(child: Text('$otherVisitorCount Other Visitors')),
+                Expanded(child: Text('$otherVisitorCount इतर अभ्यागत')),
               ],
             ),
             const Divider(height: 28),
@@ -423,7 +424,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
                 const Icon(Icons.groups, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Total Present: $totalPresent',
+                  'एकूण उपस्थित: $totalPresent',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -451,7 +452,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
                   Icon(Icons.people_outline),
                   SizedBox(width: 8),
                   Text(
-                    'Registered Members',
+                    'नोंदणीकृत सदस्य',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -462,8 +463,8 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
                 widget.user.isAdmin
-                    ? 'Check members who are Present.'
-                    : 'Attendance is read-only.',
+                    ? 'उपस्थित सदस्यांना चिन्हांकित करा.'
+                    : 'हजेरी फक्त वाचण्यासाठी उपलब्ध आहे.',
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ),
@@ -471,7 +472,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
             if (_members.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(16),
-                child: Center(child: Text('No active members found.')),
+                child: Center(child: Text('कोणतेही सक्रिय सदस्य आढळले नाहीत.')),
               )
             else
               Container(
@@ -515,7 +516,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
       ),
       subtitle: mobile.isEmpty
           ? Text(
-              isPresent ? 'Present' : 'Absent',
+              isPresent ? 'उपस्थित' : 'अनुपस्थित',
               style: TextStyle(
                 color: isPresent ? Colors.greenAccent : Colors.white54,
               ),
@@ -541,7 +542,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
                 Icon(Icons.person_add_alt_1),
                 SizedBox(width: 8),
                 Text(
-                  'Other Visitors',
+                  'इतर अभ्यागत',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -557,8 +558,8 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
                       enabled: !_isSaving,
                       textCapitalization: TextCapitalization.words,
                       decoration: const InputDecoration(
-                        labelText: 'Visitor Name',
-                        hintText: 'Enter other person name',
+                        labelText: 'अभ्यागताचे नाव',
+                        hintText: 'इतर व्यक्तीचे नाव प्रविष्ट करा',
                         prefixIcon: Icon(Icons.person_add),
                         border: OutlineInputBorder(),
                       ),
@@ -571,7 +572,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
                   IconButton.filled(
                     onPressed: _isSaving ? null : _addVisitor,
                     icon: const Icon(Icons.add),
-                    tooltip: 'Add Visitor',
+                    tooltip: 'अभ्यागत जोडा',
                   ),
                 ],
               ),
@@ -579,7 +580,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
             if (_otherVisitors.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('No other visitors added.'),
+                child: Text('इतर कोणतेही अभ्यागत जोडलेले नाहीत.'),
               )
             else
               ..._otherVisitors.map(
@@ -588,7 +589,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
                   leading: const CircleAvatar(child: Icon(Icons.person)),
                   title: Text(name),
                   subtitle: const Text(
-                    'Present',
+                    'उपस्थित',
                     style: TextStyle(color: Colors.greenAccent),
                   ),
                   trailing: widget.user.isAdmin
@@ -599,7 +600,7 @@ class _MohimAttendanceScreenState extends State<MohimAttendanceScreen> {
                                   _removeVisitor(name);
                                 },
                           icon: const Icon(Icons.delete_outline),
-                          tooltip: 'Remove Visitor',
+                          tooltip: 'अभ्यागत काढा',
                         )
                       : const Icon(
                           Icons.check_circle,

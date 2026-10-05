@@ -57,16 +57,13 @@ class Donation {
       id: map['id'] as int?,
       memberId: map['member_id'] as int?,
       memberName: map['member_name'] as String?,
-      donorType:
-          (map['donor_type'] as String?) ?? 'member',
+      donorType: (map['donor_type'] as String?) ?? 'member',
       donorName: map['donor_name'] as String?,
       amount: (map['amount'] as num).toDouble(),
       date: map['date'] as String,
       note: map['note'] as String?,
-      monthlyDonation:
-          (map['monthly_donation'] as int? ?? 0) == 1,
-      active:
-          (map['active'] as int? ?? 1) == 1,
+      monthlyDonation: (map['monthly_donation'] as int? ?? 0) == 1,
+      active: (map['active'] as int? ?? 1) == 1,
     );
   }
 }

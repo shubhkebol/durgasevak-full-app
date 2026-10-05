@@ -2,11 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class FileIntentService {
-  static const MethodChannel _channel =
-      MethodChannel('com.example.mobile/file_intent');
+  static const MethodChannel _channel = MethodChannel(
+    'com.example.mobile/file_intent',
+  );
 
-  static final ValueNotifier<String?> incomingFile =
-      ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> incomingFile = ValueNotifier<String?>(
+    null,
+  );
 
   static Future<String?> getInitialFile() async {
     try {

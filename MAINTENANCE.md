@@ -1,11 +1,18 @@
 # Durgasevak App Maintenance Guide
 
-This document outlines the steps required to keep the cloud sync functionality of the Durgasevak app running for free on Render.com.
+This document outlines the backup and cloud synchronization options for the Durgasevak app.
 
 ## Architecture Overview
-- **Mobile App**: Completely offline-first. Your data is always saved locally on your Android device in a SQLite database. **Your Admin phone is the master backup.**
-- **Cloud Backend**: Hosted on Render (Web Service).
-- **Cloud Database**: Hosted on Render (PostgreSQL). Used purely as a temporary storage tunnel to sync data between the Admin phone and Viewer phones.
+
+### 1. Primary Method: Google Drive Master Backup (Recommended & Lifetime Free)
+- **Zero Maintenance**: Does **not** expire after 30 days. No monthly database recreation needed.
+- **Admin Upload**: Pulling down on the dashboard or clicking "गुगल ड्राइव्हवर बॅकअप सेव्ह करा" uploads the latest SQLite backup to the organization's Google Drive.
+- **Viewer Download**: Viewers pull down on their dashboard to instantly sync the latest master backup.
+- **Zero Password Sharing**: Admin grants Read-Only access to viewers' Gmails via Google Drive API.
+
+### 2. Secondary Alternative: Render.com Cloud Backend
+- Render Web Service + PostgreSQL database can optionally be used as an alternate tunnel.
+- Note the 30-day reset policy detailed below if utilizing Render's free tier.
 
 ---
 

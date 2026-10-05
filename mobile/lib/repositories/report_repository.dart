@@ -1,64 +1,43 @@
 import '../database/database_service.dart';
 
 class ReportRepository {
-  static final ReportRepository instance =
-      ReportRepository._internal();
+  static final ReportRepository instance = ReportRepository._internal();
 
-  final DatabaseService _databaseService =
-      DatabaseService.instance;
+  final DatabaseService _databaseService = DatabaseService.instance;
 
   ReportRepository._internal();
 
-  Future<Map<String, double>>
-      getFinancialSummary({
+  Future<Map<String, double>> getFinancialSummary({
     String? startDate,
     String? endDate,
   }) async {
     final db = await _databaseService.database;
 
-    final dateCondition =
-        _dateCondition(
+    final dateCondition = _dateCondition(
       column: 'date',
       startDate: startDate,
       endDate: endDate,
     );
 
-    final args = <dynamic>[
-  ?startDate,
-  ?endDate,
-];
+    final args = <dynamic>[?startDate, ?endDate];
 
-    final donationResult =
-        await db.rawQuery(
-      '''
+    final donationResult = await db.rawQuery('''
       SELECT COALESCE(SUM(amount), 0) AS total
       FROM donations
       WHERE active = 1
       $dateCondition
-      ''',
-      args,
-    );
+      ''', args);
 
-    final expenseResult =
-        await db.rawQuery(
-      '''
+    final expenseResult = await db.rawQuery('''
       SELECT COALESCE(SUM(amount), 0) AS total
       FROM expenses
       WHERE active = 1
       $dateCondition
-      ''',
-      args,
-    );
+      ''', args);
 
-    final donations =
-        (donationResult.first['total']
-                as num)
-            .toDouble();
+    final donations = (donationResult.first['total'] as num).toDouble();
 
-    final expenses =
-        (expenseResult.first['total']
-                as num)
-            .toDouble();
+    final expenses = (expenseResult.first['total'] as num).toDouble();
 
     return {
       'donations': donations,
@@ -67,8 +46,7 @@ class ReportRepository {
     };
   }
 
-  Future<List<Map<String, dynamic>>>
-      getDonationReport({
+  Future<List<Map<String, dynamic>>> getDonationReport({
     String? startDate,
     String? endDate,
   }) async {
@@ -80,13 +58,9 @@ class ReportRepository {
       endDate: endDate,
     );
 
-    final args = <dynamic>[
-  ?startDate,
-  ?endDate,
-];
+    final args = <dynamic>[?startDate, ?endDate];
 
-    return db.rawQuery(
-      '''
+    return db.rawQuery('''
       SELECT
         donations.*,
         members.name AS member_name
@@ -98,13 +72,10 @@ class ReportRepository {
       ORDER BY
         donations.date DESC,
         donations.id DESC
-      ''',
-      args,
-    );
+      ''', args);
   }
 
-  Future<List<Map<String, dynamic>>>
-      getExpenseReport({
+  Future<List<Map<String, dynamic>>> getExpenseReport({
     String? startDate,
     String? endDate,
   }) async {
@@ -116,13 +87,9 @@ class ReportRepository {
       endDate: endDate,
     );
 
-    final args = <dynamic>[
-  ?startDate,
-  ?endDate,
-];
+    final args = <dynamic>[?startDate, ?endDate];
 
-    return db.rawQuery(
-      '''
+    return db.rawQuery('''
       SELECT *
       FROM expenses
       WHERE active = 1
@@ -130,13 +97,10 @@ class ReportRepository {
       ORDER BY
         date DESC,
         id DESC
-      ''',
-      args,
-    );
+      ''', args);
   }
 
-  Future<List<Map<String, dynamic>>>
-      getMemberWiseDonations({
+  Future<List<Map<String, dynamic>>> getMemberWiseDonations({
     String? startDate,
     String? endDate,
   }) async {
@@ -148,13 +112,9 @@ class ReportRepository {
       endDate: endDate,
     );
 
-    final args = <dynamic>[
-  ?startDate,
-  ?endDate,
-];
+    final args = <dynamic>[?startDate, ?endDate];
 
-    return db.rawQuery(
-      '''
+    return db.rawQuery('''
       SELECT
         members.id AS member_id,
         members.name AS member_name,
@@ -173,13 +133,10 @@ class ReportRepository {
       ORDER BY
         total_amount DESC,
         members.name COLLATE NOCASE ASC
-      ''',
-      args,
-    );
+      ''', args);
   }
 
-  Future<List<Map<String, dynamic>>>
-      getMonthlyDonationSummary({
+  Future<List<Map<String, dynamic>>> getMonthlyDonationSummary({
     String? startDate,
     String? endDate,
   }) async {
@@ -191,13 +148,9 @@ class ReportRepository {
       endDate: endDate,
     );
 
-    final args = <dynamic>[
-  ?startDate,
-  ?endDate,
-];
+    final args = <dynamic>[?startDate, ?endDate];
 
-    return db.rawQuery(
-      '''
+    return db.rawQuery('''
       SELECT
         strftime('%Y-%m', date) AS month,
         COUNT(id) AS donation_count,
@@ -208,13 +161,10 @@ class ReportRepository {
       $condition
       GROUP BY strftime('%Y-%m', date)
       ORDER BY month DESC
-      ''',
-      args,
-    );
+      ''', args);
   }
 
-  Future<List<Map<String, dynamic>>>
-      getOtherDonorSummary({
+  Future<List<Map<String, dynamic>>> getOtherDonorSummary({
     String? startDate,
     String? endDate,
   }) async {
@@ -226,13 +176,9 @@ class ReportRepository {
       endDate: endDate,
     );
 
-    final args = <dynamic>[
-  ?startDate,
-  ?endDate,
-];
+    final args = <dynamic>[?startDate, ?endDate];
 
-    return db.rawQuery(
-      '''
+    return db.rawQuery('''
       SELECT
         COALESCE(
           NULLIF(TRIM(donor_name), ''),
@@ -253,9 +199,7 @@ class ReportRepository {
       ORDER BY
         total_amount DESC,
         donor_name COLLATE NOCASE ASC
-      ''',
-      args,
-    );
+      ''', args);
   }
 
   String _dateCondition({
@@ -266,15 +210,11 @@ class ReportRepository {
     final conditions = <String>[];
 
     if (startDate != null) {
-      conditions.add(
-        '$column >= ?',
-      );
+      conditions.add('$column >= ?');
     }
 
     if (endDate != null) {
-      conditions.add(
-        '$column < ?',
-      );
+      conditions.add('$column < ?');
     }
 
     if (conditions.isEmpty) {

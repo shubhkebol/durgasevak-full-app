@@ -4,6 +4,9 @@ import '../models/member.dart';
 import '../repositories/member_repository.dart';
 import '../services/auth_service.dart';
 import '../widgets/app_background.dart';
+import '../widgets/whatsapp_icon.dart';
+import 'member_missed_donations_screen.dart';
+import 'missed_donations_screen.dart';
 
 class MembersScreen extends StatefulWidget {
   final AuthUser user;
@@ -53,8 +56,9 @@ class _MembersScreenState extends State<MembersScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Unable to load members: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('सदस्य लोड करण्यात अडचण आली: $e')));
     }
   }
 
@@ -84,20 +88,22 @@ class _MembersScreenState extends State<MembersScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Deactivate Member'),
-          content: Text('Are you sure you want to deactivate ${member.name}?'),
+          title: const Text('सदस्य निष्क्रिय करा'),
+          content: Text(
+            'तुम्हाला नक्की ${member.name} यांना निष्क्रिय करायचे आहे का?',
+          ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop(false);
               },
-              child: const Text('Cancel'),
+              child: const Text('रद्द करा'),
             ),
             FilledButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop(true);
               },
-              child: const Text('Deactivate'),
+              child: const Text('निष्क्रिय करा'),
             ),
           ],
         );
@@ -121,23 +127,52 @@ class _MembersScreenState extends State<MembersScreen> {
         return;
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('${member.name} deactivated')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${member.name} यांना निष्क्रिय केले')),
+      );
     } catch (e) {
       if (!mounted) {
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to deactivate member: $e')),
+        SnackBar(content: Text('सदस्य निष्क्रिय करण्यात अडचण आली: $e')),
       );
+    }
+  }
+
+  Future<void> _openMemberMissedDonations(Member member) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            MemberMissedDonationsScreen(member: member, user: widget.user),
+      ),
+    );
+
+    if (mounted) {
+      await _loadMembers();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Members')),
+      appBar: AppBar(
+        title: const Text('सदस्य'),
+        actions: [
+          IconButton(
+            tooltip: 'प्रलंबित मासिक देणग्या',
+            icon: const Icon(Icons.event_busy),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => MissedDonationsScreen(user: widget.user),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: AppBackground(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -153,6 +188,7 @@ class _MembersScreenState extends State<MembersScreen> {
 
                     return Card(
                       child: ListTile(
+                        onTap: () => _openMemberMissedDonations(member),
                         leading: CircleAvatar(
                           child: Text(
                             member.name.isEmpty
@@ -164,16 +200,43 @@ class _MembersScreenState extends State<MembersScreen> {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (member.mobile != null) Text(member.mobile!),
+                            if (member.mobile != null)
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.phone,
+                                    size: 13,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '+91 ${member.mobile!}',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ],
+                              ),
                             if (member.address != null) Text(member.address!),
                           ],
                         ),
                         isThreeLine:
                             member.mobile != null && member.address != null,
-                        trailing: widget.user.isAdmin
-                            ? PopupMenuButton<String>(
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (widget.user.isAdmin)
+                              IconButton(
+                                icon: const WhatsAppIcon(size: 22),
+                                tooltip:
+                                    'प्रलंबित देणग्या व व्हॉट्सॲप स्मरणपत्र',
+                                onPressed: () =>
+                                    _openMemberMissedDonations(member),
+                              ),
+                            if (widget.user.isAdmin)
+                              PopupMenuButton<String>(
                                 onSelected: (value) {
-                                  if (value == 'edit') {
+                                  if (value == 'donations') {
+                                    _openMemberMissedDonations(member);
+                                  } else if (value == 'edit') {
                                     _showMemberForm(member: member);
                                   } else if (value == 'deactivate') {
                                     _deactivateMember(member);
@@ -181,16 +244,32 @@ class _MembersScreenState extends State<MembersScreen> {
                                 },
                                 itemBuilder: (context) => const [
                                   PopupMenuItem(
+                                    value: 'donations',
+                                    child: Row(
+                                      children: [
+                                        WhatsAppIcon(size: 18),
+                                        SizedBox(width: 8),
+                                        Text('प्रलंबित देणग्या व व्हॉट्सॲप'),
+                                      ],
+                                    ),
+                                  ),
+                                  PopupMenuItem(
                                     value: 'edit',
-                                    child: Text('Edit'),
+                                    child: Text('संपादित करा'),
                                   ),
                                   PopupMenuItem(
                                     value: 'deactivate',
-                                    child: Text('Deactivate'),
+                                    child: Text('निष्क्रिय करा'),
                                   ),
                                 ],
                               )
-                            : null,
+                            else
+                              const Icon(
+                                Icons.chevron_right,
+                                color: Colors.grey,
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -201,7 +280,7 @@ class _MembersScreenState extends State<MembersScreen> {
           ? FloatingActionButton.extended(
               onPressed: () => _showMemberForm(),
               icon: const Icon(Icons.person_add),
-              label: const Text('Add Member'),
+              label: const Text('सदस्य जोडा'),
             )
           : null,
     );
@@ -217,14 +296,14 @@ class _MembersScreenState extends State<MembersScreen> {
           SizedBox(height: 16),
           Center(
             child: Text(
-              'No members found',
+              'एकही सदस्य आढळला नाही',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
           ),
           SizedBox(height: 8),
           Center(
             child: Text(
-              'Tap "Add Member" to add your first member.',
+              'नवीन सदस्य जोडण्यासाठी "सदस्य जोडा" वर टॅप करा.',
               textAlign: TextAlign.center,
             ),
           ),
@@ -323,8 +402,9 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
         _isSaving = false;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Unable to save member: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('सदस्य जतन करण्यात अडचण आली: $e')));
     }
   }
 
@@ -333,7 +413,7 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
     final isEditing = widget.member != null;
 
     return AlertDialog(
-      title: Text(isEditing ? 'Edit Member' : 'Add Member'),
+      title: Text(isEditing ? 'सदस्य माहिती संपादित करा' : 'नवीन सदस्य जोडा'),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -345,13 +425,13 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
                 enabled: !_isSaving,
                 textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
-                  labelText: 'Name',
+                  labelText: 'नाव',
                   prefixIcon: Icon(Icons.person_outline),
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Name is required';
+                    return 'नाव आवश्यक आहे';
                   }
 
                   return null;
@@ -363,7 +443,7 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
                 enabled: !_isSaving,
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
-                  labelText: 'Mobile',
+                  labelText: 'मोबाईल नंबर',
                   prefixIcon: Icon(Icons.phone_outlined),
                   border: OutlineInputBorder(),
                 ),
@@ -375,7 +455,7 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 2,
                 decoration: const InputDecoration(
-                  labelText: 'Address',
+                  labelText: 'पत्ता',
                   prefixIcon: Icon(Icons.location_on_outlined),
                   border: OutlineInputBorder(),
                 ),
@@ -391,7 +471,7 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
               : () {
                   Navigator.of(context).pop(false);
                 },
-          child: const Text('Cancel'),
+          child: const Text('रद्द करा'),
         ),
         FilledButton(
           onPressed: _isSaving ? null : _save,
@@ -401,7 +481,7 @@ class _MemberFormDialogState extends State<MemberFormDialog> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(isEditing ? 'Update' : 'Save'),
+              : Text(isEditing ? 'अपडेट करा' : 'जतन करा'),
         ),
       ],
     );

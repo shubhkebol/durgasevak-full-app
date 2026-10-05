@@ -42,7 +42,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: _createDatabase,
       onUpgrade: _upgradeDatabase,
     );
@@ -132,7 +132,18 @@ class DatabaseService {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS admin_contacts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        post TEXT NOT NULL,
+        mobile TEXT NOT NULL,
+        is_primary INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+
     await _seedDefaultUsers(db);
+    await _seedDefaultAdminContacts(db);
   }
 
   Future<void> _upgradeDatabase(
@@ -235,9 +246,63 @@ class DatabaseService {
         )
       ''');
     }
+
+    if (oldVersion < 9) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS admin_contacts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          post TEXT NOT NULL,
+          mobile TEXT NOT NULL,
+          is_primary INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+      await _seedDefaultAdminContacts(db);
+    }
+  }
+
+  Future<void> _seedDefaultAdminContacts(Database db) async {
+    await db.delete(
+      'admin_contacts',
+      where:
+          "mobile IN ('9822012345', '9822054321', '9822098765') "
+          "OR name IN ('रोहन सावंत', 'अमित देशमुख', 'सचिन शिंदे')",
+    );
+
+    final existing = await db.query('admin_contacts', limit: 1);
+    if (existing.isNotEmpty) {
+      return;
+    }
+
+    await db.insert('admin_contacts', {
+      'name': 'Aniket Patil',
+      'post': 'मुख्य ॲडमिन',
+      'mobile': '7276685220',
+      'is_primary': 1,
+    });
+    await db.insert('admin_contacts', {
+      'name': 'Nitesh Juikar',
+      'post': 'सह-ॲडमिन',
+      'mobile': '8550951707',
+      'is_primary': 0,
+    });
+    await db.insert('admin_contacts', {
+      'name': 'Shubham',
+      'post': 'ॲडमिन',
+      'mobile': '8390161840',
+      'is_primary': 0,
+    });
   }
 
   Future<void> _seedDefaultUsers(Database db) async {
+    // Migrate old Admin@1 if present
+    await db.update(
+      'users',
+      {'username': 'Admin'},
+      where: 'username = ?',
+      whereArgs: ['Admin@1'],
+    );
+
     final users = await db.query('users', limit: 1);
 
     if (users.isNotEmpty) {

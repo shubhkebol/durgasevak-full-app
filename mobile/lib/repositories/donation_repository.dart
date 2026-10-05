@@ -2,22 +2,19 @@ import '../database/database_service.dart';
 import '../models/donation.dart';
 
 class DonationRepository {
-  static final DonationRepository instance =
-      DonationRepository._internal();
+  static final DonationRepository instance = DonationRepository._internal();
 
-  final DatabaseService _databaseService =
-      DatabaseService.instance;
+  final DatabaseService _databaseService = DatabaseService.instance;
 
   DonationRepository._internal();
 
-  Future<List<Donation>> getActiveDonations({
-    String search = '',
-  }) async {
+  Future<List<Donation>> getActiveDonations({String search = ''}) async {
     final db = await _databaseService.database;
 
     final hasSearch = search.trim().isNotEmpty;
 
-    final query = '''
+    final query =
+        '''
       SELECT
         donations.*,
         members.name AS member_name
@@ -44,15 +41,12 @@ class DonationRepository {
 
     final searchValue = '%${search.trim()}%';
 
-    final rows = await db.rawQuery(
-      query,
-      [
-        searchValue,
-        searchValue,
-        searchValue,
-        searchValue,
-      ],
-    );
+    final rows = await db.rawQuery(query, [
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+    ]);
 
     return rows.map(Donation.fromMap).toList();
   }
@@ -81,28 +75,19 @@ class DonationRepository {
     return Donation.fromMap(rows.first);
   }
 
-  Future<int> addDonation(
-    Donation donation,
-  ) async {
+  Future<int> addDonation(Donation donation) async {
     final db = await _databaseService.database;
 
     final data = donation.toMap();
 
     data.remove('id');
 
-    return db.insert(
-      'donations',
-      data,
-    );
+    return db.insert('donations', data);
   }
 
-  Future<int> updateDonation(
-    Donation donation,
-  ) async {
+  Future<int> updateDonation(Donation donation) async {
     if (donation.id == null) {
-      throw ArgumentError(
-        'Donation ID is required for update',
-      );
+      throw ArgumentError('Donation ID is required for update');
     }
 
     final db = await _databaseService.database;
@@ -119,9 +104,7 @@ class DonationRepository {
     );
   }
 
-  Future<int> deactivateDonation(
-    int id,
-  ) async {
+  Future<int> deactivateDonation(int id) async {
     final db = await _databaseService.database;
 
     return db.update(
@@ -142,5 +125,21 @@ class DonationRepository {
     ''');
 
     return (result.first['total'] as num).toDouble();
+  }
+
+  Future<List<Map<String, dynamic>>> getMemberMonthlyDonations(
+    int memberId,
+  ) async {
+    final db = await _databaseService.database;
+
+    final rows = await db.query(
+      'donations',
+      columns: ['id', 'amount', 'date', 'note', 'monthly_donation'],
+      where: 'member_id = ? AND monthly_donation = 1 AND active = 1',
+      whereArgs: [memberId],
+      orderBy: 'date ASC',
+    );
+
+    return rows;
   }
 }

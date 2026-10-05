@@ -5,11 +5,10 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
 class GoogleDriveService {
-  static final GoogleDriveService instance =
-      GoogleDriveService._internal();
+  static final GoogleDriveService instance = GoogleDriveService._internal();
 
   static const String _webClientId =
-      '758439303564-3mg611beiro0ubf31vs6ocetv95llrpd.apps.googleusercontent.com';
+      '688321905862-vt8fqtt60o2hckb40mucs21oaf8l10v5.apps.googleusercontent.com';
 
   static const String driveFileScope =
       'https://www.googleapis.com/auth/drive.file';
@@ -17,19 +16,15 @@ class GoogleDriveService {
   static const String driveReadonlyScope =
       'https://www.googleapis.com/auth/drive.readonly';
 
-  static const String _driveApi =
-      'https://www.googleapis.com/drive/v3';
+  static const String _driveApi = 'https://www.googleapis.com/drive/v3';
 
-  static const String _uploadApi =
-      'https://www.googleapis.com/upload/drive/v3';
+  static const String _uploadApi = 'https://www.googleapis.com/upload/drive/v3';
 
   static const String _folderName = 'Durgasevak';
 
-  static const String _backupFileName =
-      'durgasevak_backup.db';
+  static const String _backupFileName = 'durgasevak_backup.db';
 
-  final GoogleSignIn _googleSignIn =
-      GoogleSignIn.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
   GoogleSignInAccount? _account;
 
@@ -46,22 +41,18 @@ class GoogleDriveService {
       return;
     }
 
-    await _googleSignIn.initialize(
-      serverClientId: _webClientId,
-    );
+    await _googleSignIn.initialize(serverClientId: _webClientId);
 
     _initialized = true;
   }
 
-  Future<GoogleSignInAccount> connect({
-    required bool isAdmin,
-  }) async {
+  Future<GoogleSignInAccount> connect({required bool isAdmin}) async {
     await _initialize();
 
     GoogleSignInAccount? account;
 
-    final lightweightAuthentication =
-        _googleSignIn.attemptLightweightAuthentication();
+    final lightweightAuthentication = _googleSignIn
+        .attemptLightweightAuthentication();
 
     account ??= await lightweightAuthentication;
 
@@ -69,46 +60,30 @@ class GoogleDriveService {
 
     _account = account;
 
-    await _authorizeDrive(
-      account,
-      isAdmin: isAdmin,
-    );
+    await _authorizeDrive(account, isAdmin: isAdmin);
 
     return account;
   }
 
-  Future<String> _getAccessToken({
-    required bool isAdmin,
-  }) async {
+  Future<String> _getAccessToken({required bool isAdmin}) async {
     await _initialize();
 
     var account = _account;
 
-    account ??= await connect(
-      isAdmin: isAdmin,
-    );
+    account ??= await connect(isAdmin: isAdmin);
 
     final scopes = isAdmin
-        ? const <String>[
-            driveFileScope,
-          ]
-        : const <String>[
-            driveReadonlyScope,
-          ];
+        ? const <String>[driveFileScope]
+        : const <String>[driveReadonlyScope];
 
-    final authorization =
-        await account.authorizationClient
-            .authorizationForScopes(
-      scopes,
-    );
+    final authorization = await account.authorizationClient
+        .authorizationForScopes(scopes);
 
     if (authorization != null) {
       return authorization.accessToken;
     }
 
-    final newAuthorization =
-        await account.authorizationClient
-            .authorizeScopes(
+    final newAuthorization = await account.authorizationClient.authorizeScopes(
       scopes,
     );
 
@@ -120,16 +95,10 @@ class GoogleDriveService {
     required bool isAdmin,
   }) async {
     final scopes = isAdmin
-        ? const <String>[
-            driveFileScope,
-          ]
-        : const <String>[
-            driveReadonlyScope,
-          ];
+        ? const <String>[driveFileScope]
+        : const <String>[driveReadonlyScope];
 
-    final existing =
-        await account.authorizationClient
-            .authorizationForScopes(
+    final existing = await account.authorizationClient.authorizationForScopes(
       scopes,
     );
 
@@ -137,17 +106,13 @@ class GoogleDriveService {
       return;
     }
 
-    await account.authorizationClient
-        .authorizeScopes(scopes);
+    await account.authorizationClient.authorizeScopes(scopes);
   }
 
   Future<String> getOrCreateFolder() async {
-    final token = await _getAccessToken(
-      isAdmin: true,
-    );
+    final token = await _getAccessToken(isAdmin: true);
 
-    final existingFolder =
-        await _findFolder(token);
+    final existingFolder = await _findFolder(token);
 
     if (existingFolder != null) {
       return existingFolder;
@@ -156,41 +121,29 @@ class GoogleDriveService {
     final response = await http.post(
       Uri.parse('$_driveApi/files'),
       headers: {
-        HttpHeaders.authorizationHeader:
-            'Bearer $token',
-        HttpHeaders.contentTypeHeader:
-            'application/json',
+        HttpHeaders.authorizationHeader: 'Bearer $token',
+        HttpHeaders.contentTypeHeader: 'application/json',
       },
       body: jsonEncode({
         'name': _folderName,
-        'mimeType':
-            'application/vnd.google-apps.folder',
+        'mimeType': 'application/vnd.google-apps.folder',
       }),
     );
 
-    _checkResponse(
-      response,
-      'Unable to create Durgasevak Drive folder.',
-    );
+    _checkResponse(response, 'Unable to create Durgasevak Drive folder.');
 
-    final data =
-        jsonDecode(response.body)
-            as Map<String, dynamic>;
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
 
     final id = data['id'] as String?;
 
     if (id == null || id.isEmpty) {
-      throw Exception(
-        'Google Drive did not return a folder ID.',
-      );
+      throw Exception('Google Drive did not return a folder ID.');
     }
 
     return id;
   }
 
-  Future<String?> _findFolder(
-    String token,
-  ) async {
+  Future<String?> _findFolder(String token) async {
     final query = Uri.encodeQueryComponent(
       "name = '$_folderName' "
       "and mimeType = "
@@ -207,49 +160,31 @@ class GoogleDriveService {
 
     final response = await http.get(
       uri,
-      headers: {
-        HttpHeaders.authorizationHeader:
-            'Bearer $token',
-      },
+      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
     );
 
-    _checkResponse(
-      response,
-      'Unable to search for Durgasevak folder.',
-    );
+    _checkResponse(response, 'Unable to search for Durgasevak folder.');
 
-    final data =
-        jsonDecode(response.body)
-            as Map<String, dynamic>;
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
 
-    final files =
-        (data['files'] as List<dynamic>?) ?? [];
+    final files = (data['files'] as List<dynamic>?) ?? [];
 
     if (files.isEmpty) {
       return null;
     }
 
-    final first =
-        files.first as Map<String, dynamic>;
+    final first = files.first as Map<String, dynamic>;
 
     return first['id'] as String?;
   }
 
-  Future<void> shareFolderWithUser(
-    String folderId,
-    String email,
-  ) async {
-    final token = await _getAccessToken(
-      isAdmin: true,
-    );
+  Future<void> shareFolderWithUser(String folderId, String email) async {
+    final token = await _getAccessToken(isAdmin: true);
 
-    final normalizedEmail =
-        email.trim().toLowerCase();
+    final normalizedEmail = email.trim().toLowerCase();
 
     if (normalizedEmail.isEmpty) {
-      throw Exception(
-        'Viewer email address cannot be empty.',
-      );
+      throw Exception('Viewer email address cannot be empty.');
     }
 
     final response = await http.post(
@@ -258,10 +193,8 @@ class GoogleDriveService {
         '?sendNotificationEmail=true',
       ),
       headers: {
-        HttpHeaders.authorizationHeader:
-            'Bearer $token',
-        HttpHeaders.contentTypeHeader:
-            'application/json',
+        HttpHeaders.authorizationHeader: 'Bearer $token',
+        HttpHeaders.contentTypeHeader: 'application/json',
       },
       body: jsonEncode({
         'type': 'user',
@@ -277,14 +210,10 @@ class GoogleDriveService {
     );
   }
 
-  Future<Map<String, dynamic>?>
-      getBackupMetadata() async {
-    final token = await _getAccessToken(
-      isAdmin: false,
-    );
+  Future<Map<String, dynamic>?> getBackupMetadata() async {
+    final token = await _getAccessToken(isAdmin: false);
 
-    final folderId =
-        await _findFolder(token);
+    final folderId = await _findFolder(token);
 
     if (folderId == null) {
       return null;
@@ -306,74 +235,43 @@ class GoogleDriveService {
 
     final response = await http.get(
       uri,
-      headers: {
-        HttpHeaders.authorizationHeader:
-            'Bearer $token',
-      },
+      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
     );
 
-    _checkResponse(
-      response,
-      'Unable to read backup information.',
-    );
+    _checkResponse(response, 'Unable to read backup information.');
 
-    final data =
-        jsonDecode(response.body)
-            as Map<String, dynamic>;
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
 
-    final files =
-        (data['files'] as List<dynamic>?) ?? [];
+    final files = (data['files'] as List<dynamic>?) ?? [];
 
     if (files.isEmpty) {
       return null;
     }
 
-    return files.first
-        as Map<String, dynamic>;
+    return files.first as Map<String, dynamic>;
   }
 
   Future<String?> findBackupFile() async {
-    final metadata =
-        await getBackupMetadata();
+    final metadata = await getBackupMetadata();
 
     return metadata?['id'] as String?;
   }
 
-  Future<String> uploadBackup(
-    String backupPath,
-    String folderId,
-  ) async {
-    final token = await _getAccessToken(
-      isAdmin: true,
-    );
+  Future<String> uploadBackup(String backupPath, String folderId) async {
+    final token = await _getAccessToken(isAdmin: true);
 
-    final existingFile =
-        await _findBackupOwnedByApp(
-      token,
-      folderId,
-    );
+    final existingFile = await _findBackupOwnedByApp(token, folderId);
 
     if (existingFile != null) {
-      await _updateBackup(
-        token,
-        existingFile,
-        backupPath,
-      );
+      await _updateBackup(token, existingFile, backupPath);
 
       return existingFile;
     }
 
-    return _createBackup(
-      token,
-      folderId,
-      backupPath,
-    );
+    return _createBackup(token, folderId, backupPath);
   }
 
-  Future<String?> _findBackupOwnedByApp(
-    String token,
-    String folderId,
-  ) async {
+  Future<String?> _findBackupOwnedByApp(String token, String folderId) async {
     final query = Uri.encodeQueryComponent(
       "name = '$_backupFileName' "
       "and '$folderId' in parents "
@@ -389,31 +287,20 @@ class GoogleDriveService {
 
     final response = await http.get(
       uri,
-      headers: {
-        HttpHeaders.authorizationHeader:
-            'Bearer $token',
-      },
+      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
     );
 
-    _checkResponse(
-      response,
-      'Unable to locate existing backup.',
-    );
+    _checkResponse(response, 'Unable to locate existing backup.');
 
-    final data =
-        jsonDecode(response.body)
-            as Map<String, dynamic>;
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
 
-    final files =
-        (data['files'] as List<dynamic>?) ?? [];
+    final files = (data['files'] as List<dynamic>?) ?? [];
 
     if (files.isEmpty) {
       return null;
     }
 
-    return (files.first
-        as Map<String, dynamic>)['id']
-        as String?;
+    return (files.first as Map<String, dynamic>)['id'] as String?;
   }
 
   Future<String> _createBackup(
@@ -421,8 +308,7 @@ class GoogleDriveService {
     String folderId,
     String backupPath,
   ) async {
-    final fileBytes =
-        await File(backupPath).readAsBytes();
+    final fileBytes = await File(backupPath).readAsBytes();
 
     final boundary =
         'DurgasevakBoundary'
@@ -451,11 +337,7 @@ class GoogleDriveService {
 
     body.addAll(fileBytes);
 
-    body.addAll(
-      utf8.encode(
-        '\r\n--$boundary--\r\n',
-      ),
-    );
+    body.addAll(utf8.encode('\r\n--$boundary--\r\n'));
 
     final response = await http.post(
       Uri.parse(
@@ -464,29 +346,20 @@ class GoogleDriveService {
         '&fields=id,name,modifiedTime',
       ),
       headers: {
-        HttpHeaders.authorizationHeader:
-            'Bearer $token',
-        HttpHeaders.contentTypeHeader:
-            'multipart/related; boundary=$boundary',
+        HttpHeaders.authorizationHeader: 'Bearer $token',
+        HttpHeaders.contentTypeHeader: 'multipart/related; boundary=$boundary',
       },
       body: body,
     );
 
-    _checkResponse(
-      response,
-      'Unable to upload Durgasevak backup.',
-    );
+    _checkResponse(response, 'Unable to upload Durgasevak backup.');
 
-    final data =
-        jsonDecode(response.body)
-            as Map<String, dynamic>;
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
 
     final id = data['id'] as String?;
 
     if (id == null || id.isEmpty) {
-      throw Exception(
-        'Google Drive did not return backup file ID.',
-      );
+      throw Exception('Google Drive did not return backup file ID.');
     }
 
     return id;
@@ -497,8 +370,7 @@ class GoogleDriveService {
     String fileId,
     String backupPath,
   ) async {
-    final fileBytes =
-        await File(backupPath).readAsBytes();
+    final fileBytes = await File(backupPath).readAsBytes();
 
     final response = await http.patch(
       Uri.parse(
@@ -507,78 +379,54 @@ class GoogleDriveService {
         '&fields=id,name,modifiedTime',
       ),
       headers: {
-        HttpHeaders.authorizationHeader:
-            'Bearer $token',
-        HttpHeaders.contentTypeHeader:
-            'application/octet-stream',
+        HttpHeaders.authorizationHeader: 'Bearer $token',
+        HttpHeaders.contentTypeHeader: 'application/octet-stream',
       },
       body: fileBytes,
     );
 
-    _checkResponse(
-      response,
-      'Unable to update Durgasevak backup.',
-    );
+    _checkResponse(response, 'Unable to update Durgasevak backup.');
   }
 
-  Future<String> downloadBackup(
-    String fileId,
-    String destinationPath,
-  ) async {
-    final token = await _getAccessToken(
-      isAdmin: false,
-    );
+  Future<String> downloadBackup(String fileId, String destinationPath) async {
+    final token = await _getAccessToken(isAdmin: false);
 
     final response = await http.get(
-      Uri.parse(
-        '$_driveApi/files/$fileId?alt=media',
-      ),
-      headers: {
-        HttpHeaders.authorizationHeader:
-            'Bearer $token',
-      },
+      Uri.parse('$_driveApi/files/$fileId?alt=media'),
+      headers: {HttpHeaders.authorizationHeader: 'Bearer $token'},
     );
 
-    _checkResponse(
-      response,
-      'Unable to download Durgasevak backup.',
-    );
+    _checkResponse(response, 'Unable to download Durgasevak backup.');
 
     final file = File(destinationPath);
 
-    await file.writeAsBytes(
-      response.bodyBytes,
-      flush: true,
-    );
+    await file.writeAsBytes(response.bodyBytes, flush: true);
 
     return destinationPath;
   }
 
   Future<void> disconnect() async {
+    try {
+      await _googleSignIn.disconnect();
+    } catch (_) {}
     _account = null;
   }
 
-  void _checkResponse(
-    http.Response response,
-    String message,
-  ) {
-    if (response.statusCode >= 200 &&
-        response.statusCode < 300) {
+  void _checkResponse(http.Response response, String message) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
       return;
     }
 
     String detail = '';
 
     try {
-      final decoded =
-          jsonDecode(response.body);
+      final decoded = jsonDecode(response.body);
 
       if (decoded is Map<String, dynamic>) {
         final error = decoded['error'];
 
         if (error is Map<String, dynamic>) {
-          detail =
-              error['message']?.toString() ?? '';
+          detail = error['message']?.toString() ?? '';
         }
       }
     } catch (_) {

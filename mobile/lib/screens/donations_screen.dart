@@ -10,6 +10,7 @@ import '../repositories/member_repository.dart';
 
 import '../services/auth_service.dart';
 
+import '../utils/marathi_constants.dart';
 import '../widgets/app_background.dart';
 import 'missed_donations_screen.dart';
 
@@ -113,9 +114,9 @@ class _DonationsScreenState extends State<DonationsScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Unable to load donations: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('देणग्या लोड करण्यात अडचण आली: $e')),
+      );
     }
   }
 
@@ -153,12 +154,12 @@ class _DonationsScreenState extends State<DonationsScreen> {
 
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Deactivate Donation'),
+          title: const Text('देणगी निष्क्रिय करा'),
 
           content: Text(
-            'Are you sure you want to deactivate '
-            'this donation of '
-            '₹${donation.amount.toStringAsFixed(2)}?',
+            'तुम्हाला खात्री आहे की ही '
+            '₹${donation.amount.toStringAsFixed(2)} ची देणगी '
+            'निष्क्रिय करायची आहे?',
           ),
 
           actions: [
@@ -167,7 +168,7 @@ class _DonationsScreenState extends State<DonationsScreen> {
                 Navigator.of(dialogContext).pop(false);
               },
 
-              child: const Text('Cancel'),
+              child: const Text('रद्द करा'),
             ),
 
             FilledButton(
@@ -175,7 +176,7 @@ class _DonationsScreenState extends State<DonationsScreen> {
                 Navigator.of(dialogContext).pop(true);
               },
 
-              child: const Text('Deactivate'),
+              child: const Text('निष्क्रिय करा'),
             ),
           ],
         );
@@ -194,7 +195,7 @@ class _DonationsScreenState extends State<DonationsScreen> {
       }
 
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Donation deactivated')));
+          .showSnackBar(const SnackBar(content: Text('देणगी निष्क्रिय केली')));
 
       await _loadData();
     } catch (e) {
@@ -203,7 +204,7 @@ class _DonationsScreenState extends State<DonationsScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to deactivate donation: $e')),
+        SnackBar(content: Text('देणगी निष्क्रिय करण्यात अडचण आली: $e')),
       );
     }
   }
@@ -218,13 +219,13 @@ class _DonationsScreenState extends State<DonationsScreen> {
   String _getCategoryLabel(String category) {
     switch (category) {
       case 'monthly':
-        return 'Monthly Donation';
+        return 'मासिक देणगी';
       case 'mohim_vargani':
-        return 'Mohim Vargani';
+        return 'मोहीम वर्गणी';
       case 'other':
-        return 'Other Donation';
+        return 'इतर देणगी';
       default:
-        return 'All Categories';
+        return 'सर्व वर्ग';
     }
   }
 
@@ -234,33 +235,7 @@ class _DonationsScreenState extends State<DonationsScreen> {
   }
 
   String _monthLabel(String monthKey) {
-    final parts = monthKey.split('-');
-    if (parts.length != 2) {
-      return monthKey;
-    }
-
-    final year = int.tryParse(parts[0]);
-    final month = int.tryParse(parts[1]);
-    if (year == null || month == null || month < 1 || month > 12) {
-      return monthKey;
-    }
-
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-
-    return '${months[month - 1]} $year';
+    return MarathiConstants.formatMonthKey(monthKey);
   }
 
   List<String> _availableMonthKeys() {
@@ -307,20 +282,20 @@ class _DonationsScreenState extends State<DonationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Donations'),
+        title: const Text('देणग्या'),
         actions: [
           if (_selectedMonthKey != null || _selectedCategory != 'all')
             IconButton(
-              tooltip: 'Clear Filters',
+              tooltip: 'फिल्टर काढा',
               onPressed: _clearFilters,
               icon: const Icon(Icons.filter_alt_off),
             ),
           IconButton(
-            tooltip: 'Missed Monthly Donations',
+            tooltip: 'प्रलंबित मासिक देणग्या',
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => const MissedDonationsScreen(),
+                  builder: (_) => MissedDonationsScreen(user: widget.user),
                 ),
               );
             },
@@ -343,9 +318,9 @@ class _DonationsScreenState extends State<DonationsScreen> {
                 },
 
                 decoration: InputDecoration(
-                  labelText: 'Search donations',
+                  labelText: 'देणगी शोधा',
 
-                  hintText: 'Donor, amount or note',
+                  hintText: 'देणगीदार, रक्कम किंवा नोंद',
 
                   prefixIcon: const Icon(Icons.search),
 
@@ -374,14 +349,14 @@ class _DonationsScreenState extends State<DonationsScreen> {
                     child: DropdownButtonFormField<String?>(
                       initialValue: _selectedMonthKey,
                       decoration: const InputDecoration(
-                        labelText: 'Month',
+                        labelText: 'महिना',
                         prefixIcon: Icon(Icons.calendar_month),
                         border: OutlineInputBorder(),
                       ),
                       items: [
                         const DropdownMenuItem<String?>(
                           value: null,
-                          child: Text('All Months'),
+                          child: Text('सर्व महिने'),
                         ),
                         ..._availableMonthKeys().map(
                           (monthKey) => DropdownMenuItem<String?>(
@@ -426,10 +401,10 @@ class _DonationsScreenState extends State<DonationsScreen> {
                       _loadData();
                     },
                     tabs: const [
-                      Tab(text: 'All'),
-                      Tab(text: 'Monthly'),
-                      Tab(text: 'Mohim Vargani'),
-                      Tab(text: 'Other'),
+                      Tab(text: 'सर्व'),
+                      Tab(text: 'मासिक'),
+                      Tab(text: 'मोहीम वर्गणी'),
+                      Tab(text: 'इतर'),
                     ],
                   ),
                 ),
@@ -454,7 +429,7 @@ class _DonationsScreenState extends State<DonationsScreen> {
 
                           children: [
                             const Text(
-                              'Total Donations',
+                              'एकूण देणगी',
 
                               style: TextStyle(fontSize: 14),
                             ),
@@ -492,7 +467,7 @@ class _DonationsScreenState extends State<DonationsScreen> {
 
               icon: const Icon(Icons.add),
 
-              label: const Text('Add Donation'),
+              label: const Text('देणगी जोडा'),
             )
           : null,
     );
@@ -518,12 +493,15 @@ class _DonationsScreenState extends State<DonationsScreen> {
             SizedBox(height: 16),
 
             Center(
-              child: Text('No donations found', style: TextStyle(fontSize: 18)),
+              child: Text(
+                'कोणत्याही देणग्या आढळल्या नाहीत',
+                style: TextStyle(fontSize: 18),
+              ),
             ),
 
             SizedBox(height: 8),
 
-            Center(child: Text('Add a donation to get started.')),
+            Center(child: Text('सुरुवात करण्यासाठी देणगी जोडा.')),
           ],
         ),
       );
@@ -583,8 +561,8 @@ class _DonationsScreenState extends State<DonationsScreen> {
 
                   Text(
                     donation.isMemberDonation
-                        ? 'Member • ${_formatDate(donation.date)}'
-                        : 'Other Donor • ${_formatDate(donation.date)}',
+                        ? 'सदस्य • ${_formatDate(donation.date)}'
+                        : 'इतर देणगीदार • ${_formatDate(donation.date)}',
                   ),
 
                   if (donation.note != null && donation.note!.trim().isNotEmpty)
@@ -632,7 +610,7 @@ class _DonationsScreenState extends State<DonationsScreen> {
 
                                   SizedBox(width: 12),
 
-                                  Text('Edit'),
+                                  Text('संपादित करा'),
                                 ],
                               ),
                             ),
@@ -646,7 +624,7 @@ class _DonationsScreenState extends State<DonationsScreen> {
 
                                   SizedBox(width: 12),
 
-                                  Text('Deactivate'),
+                                  Text('निष्क्रिय करा'),
                                 ],
                               ),
                             ),
@@ -801,39 +779,9 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
     });
   }
 
-  String _getMonthName(int month) {
-    const months = [
-      'January',
-
-      'February',
-
-      'March',
-
-      'April',
-
-      'May',
-
-      'June',
-
-      'July',
-
-      'August',
-
-      'September',
-
-      'October',
-
-      'November',
-
-      'December',
-    ];
-
-    return months[month - 1];
-  }
-
   String _monthlyDonationNote() {
-    return 'Monthly donation - '
-        '${_getMonthName(_selectedDate.month)} '
+    return 'मासिक देणगी - '
+        '${MarathiConstants.getMonthName(_selectedDate.month)} '
         '${_selectedDate.year}';
   }
 
@@ -851,17 +799,16 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
     }
 
     if (_donorType == 'member' && _selectedMemberId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a member')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('कृपया सदस्य निवडा')));
 
       return;
     }
 
     if (_donorType == 'other' && _donorNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please enter donor name')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('कृपया देणगीदाराचे नाव प्रविष्ट करा')),
+      );
 
       return;
     }
@@ -872,7 +819,7 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
 
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid donation amount')),
+        const SnackBar(content: Text('कृपया वैध देणगी रक्कम प्रविष्ट करा')),
       );
 
       return;
@@ -927,8 +874,9 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
         _isSaving = false;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Unable to save donation: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('देणगी जतन करण्यात अडचण आली: $e')));
     }
   }
 
@@ -941,7 +889,7 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(_isEditing ? 'Edit Donation' : 'Add Donation'),
+      title: Text(_isEditing ? 'देणगी संपादित करा' : 'देणगी जोडा'),
 
       content: SingleChildScrollView(
         child: Column(
@@ -952,22 +900,18 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
               initialValue: _donorType,
 
               decoration: const InputDecoration(
-                labelText: 'Donor Category',
+                labelText: 'देणगीदार प्रकार',
 
                 border: OutlineInputBorder(),
               ),
 
               items: const [
-                DropdownMenuItem<String>(
-                  value: 'member',
-
-                  child: Text('Member'),
-                ),
+                DropdownMenuItem<String>(value: 'member', child: Text('सदस्य')),
 
                 DropdownMenuItem<String>(
                   value: 'other',
 
-                  child: Text('Other Donor'),
+                  child: Text('इतर देणगीदार'),
                 ),
               ],
 
@@ -1002,7 +946,7 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
 
                 child: InputDecorator(
                   decoration: const InputDecoration(
-                    labelText: 'Member',
+                    labelText: 'सदस्य',
 
                     prefixIcon: Icon(Icons.search),
 
@@ -1011,7 +955,7 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
 
                   child: Text(
                     _selectedMemberId == null
-                        ? 'Search and select member'
+                        ? 'सदस्य शोधा आणि निवडा'
                         : _getSelectedMemberName(),
 
                     style: TextStyle(
@@ -1030,10 +974,10 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
 
                 contentPadding: EdgeInsets.zero,
 
-                title: const Text('Monthly Donation'),
+                title: const Text('मासिक देणगी'),
 
                 subtitle: const Text(
-                  'Automatically set note for the selected month',
+                  'निवडलेल्या महिन्यासाठी आपोआप नोंद तयार करा',
                 ),
 
                 controlAffinity: ListTileControlAffinity.leading,
@@ -1063,9 +1007,9 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
                 textCapitalization: TextCapitalization.words,
 
                 decoration: const InputDecoration(
-                  labelText: 'Donor Name',
+                  labelText: 'देणगीदाराचे नाव',
 
-                  hintText: 'Enter person or organization name',
+                  hintText: 'व्यक्ती किंवा संस्थेचे नाव प्रविष्ट करा',
 
                   prefixIcon: Icon(Icons.person_outline),
 
@@ -1085,7 +1029,7 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
               enabled: !_isSaving,
 
               decoration: const InputDecoration(
-                labelText: 'Amount',
+                labelText: 'रक्कम',
 
                 prefixText: '₹ ',
 
@@ -1102,7 +1046,7 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
 
               child: InputDecorator(
                 decoration: const InputDecoration(
-                  labelText: 'Date',
+                  labelText: 'तारीख',
 
                   prefixIcon: Icon(Icons.calendar_today),
 
@@ -1123,11 +1067,9 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
               maxLines: 3,
 
               decoration: InputDecoration(
-                labelText: 'Note',
+                labelText: 'नोंद',
 
-                hintText: _monthlyDonation
-                    ? 'Automatically generated'
-                    : 'Optional',
+                hintText: _monthlyDonation ? 'आपोआप तयार केली जाईल' : 'ऐच्छिक',
 
                 border: const OutlineInputBorder(),
               ),
@@ -1144,7 +1086,7 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
                   Navigator.of(context).pop(false);
                 },
 
-          child: const Text('Cancel'),
+          child: const Text('रद्द करा'),
         ),
 
         FilledButton(
@@ -1158,7 +1100,7 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
 
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(_isEditing ? 'Update' : 'Save'),
+              : Text(_isEditing ? 'अपडेट करा' : 'जतन करा'),
         ),
       ],
     );
@@ -1171,7 +1113,7 @@ class _DonationFormDialogState extends State<DonationFormDialog> {
       }
     }
 
-    return 'Search and select member';
+    return 'सदस्य शोधा आणि निवडा';
   }
 }
 
@@ -1229,7 +1171,7 @@ class _MemberSearchDialogState extends State<MemberSearchDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Select Member'),
+      title: const Text('सदस्य निवडा'),
 
       content: SizedBox(
         width: double.maxFinite,
@@ -1246,9 +1188,9 @@ class _MemberSearchDialogState extends State<MemberSearchDialog> {
               onChanged: _search,
 
               decoration: InputDecoration(
-                labelText: 'Search member',
+                labelText: 'सदस्य शोधा',
 
-                hintText: 'Name or mobile number',
+                hintText: 'नाव किंवा मोबाईल नंबर',
 
                 prefixIcon: const Icon(Icons.search),
 
@@ -1272,7 +1214,7 @@ class _MemberSearchDialogState extends State<MemberSearchDialog> {
 
             Expanded(
               child: _filteredMembers.isEmpty
-                  ? const Center(child: Text('No members found'))
+                  ? const Center(child: Text('कोणतेही सदस्य आढळले नाहीत'))
                   : ListView.builder(
                       itemCount: _filteredMembers.length,
 
@@ -1321,7 +1263,7 @@ class _MemberSearchDialogState extends State<MemberSearchDialog> {
             Navigator.of(context).pop();
           },
 
-          child: const Text('Cancel'),
+          child: const Text('रद्द करा'),
         ),
       ],
     );

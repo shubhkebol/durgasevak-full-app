@@ -2,22 +2,19 @@ import '../database/database_service.dart';
 import '../models/expense.dart';
 
 class ExpenseRepository {
-  static final ExpenseRepository instance =
-      ExpenseRepository._internal();
+  static final ExpenseRepository instance = ExpenseRepository._internal();
 
-  final DatabaseService _databaseService =
-      DatabaseService.instance;
+  final DatabaseService _databaseService = DatabaseService.instance;
 
   ExpenseRepository._internal();
 
-  Future<List<Expense>> getActiveExpenses({
-    String search = '',
-  }) async {
+  Future<List<Expense>> getActiveExpenses({String search = ''}) async {
     final db = await _databaseService.database;
 
     final hasSearch = search.trim().isNotEmpty;
 
-    final query = '''
+    final query =
+        '''
       SELECT *
       FROM expenses
       WHERE active = 1
@@ -39,14 +36,11 @@ class ExpenseRepository {
 
     final searchValue = '%${search.trim()}%';
 
-    final rows = await db.rawQuery(
-      query,
-      [
-        searchValue,
-        searchValue,
-        searchValue,
-      ],
-    );
+    final rows = await db.rawQuery(query, [
+      searchValue,
+      searchValue,
+      searchValue,
+    ]);
 
     return rows.map(Expense.fromMap).toList();
   }
@@ -68,28 +62,19 @@ class ExpenseRepository {
     return Expense.fromMap(rows.first);
   }
 
-  Future<int> addExpense(
-    Expense expense,
-  ) async {
+  Future<int> addExpense(Expense expense) async {
     final db = await _databaseService.database;
 
     final data = expense.toMap();
 
     data.remove('id');
 
-    return db.insert(
-      'expenses',
-      data,
-    );
+    return db.insert('expenses', data);
   }
 
-  Future<int> updateExpense(
-    Expense expense,
-  ) async {
+  Future<int> updateExpense(Expense expense) async {
     if (expense.id == null) {
-      throw ArgumentError(
-        'Expense ID is required for update',
-      );
+      throw ArgumentError('Expense ID is required for update');
     }
 
     final db = await _databaseService.database;
@@ -106,9 +91,7 @@ class ExpenseRepository {
     );
   }
 
-  Future<int> deactivateExpense(
-    int id,
-  ) async {
+  Future<int> deactivateExpense(int id) async {
     final db = await _databaseService.database;
 
     return db.update(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../repositories/report_repository.dart';
 import '../services/auth_service.dart';
+import '../utils/marathi_constants.dart';
 import '../widgets/app_background.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -48,7 +49,7 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   String _displayDate(DateTime? date) {
     if (date == null) {
-      return 'Not selected';
+      return 'निवडलेली नाही';
     }
 
     return '${date.day.toString().padLeft(2, '0')}/'
@@ -121,8 +122,9 @@ class _ReportsScreenState extends State<ReportsScreen>
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Unable to load reports: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('अहवाल लोड करण्यात अडचण आली: $e')));
     }
   }
 
@@ -132,7 +134,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       initialDate: _startDate ?? _endDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
-      helpText: 'SELECT START DATE',
+      helpText: 'सुरुवात तारीख निवडा',
     );
 
     if (selected == null || !mounted) {
@@ -141,7 +143,9 @@ class _ReportsScreenState extends State<ReportsScreen>
 
     if (_endDate != null && selected.isAfter(_endDate!)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Start date cannot be after end date')),
+        const SnackBar(
+          content: Text('सुरुवात तारीख समाप्ती तारखेच्या नंतर असू शकत नाही'),
+        ),
       );
       return;
     }
@@ -159,7 +163,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       initialDate: _endDate ?? _startDate ?? DateTime.now(),
       firstDate: _startDate ?? DateTime(2000),
       lastDate: DateTime(2100),
-      helpText: 'SELECT END DATE',
+      helpText: 'समाप्ती तारीख निवडा',
     );
 
     if (selected == null || !mounted) {
@@ -168,7 +172,11 @@ class _ReportsScreenState extends State<ReportsScreen>
 
     if (_startDate != null && selected.isBefore(_startDate!)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('End date cannot be before start date')),
+        const SnackBar(
+          content: Text(
+            'समाप्ती तारीख सुरुवातीच्या तारखेच्या आधी असू शकत नाही',
+          ),
+        ),
       );
       return;
     }
@@ -217,7 +225,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         return donorName;
       }
 
-      return 'Other Donor';
+      return 'इतर देणगीदार';
     }
 
     final memberName = row['member_name'] as String?;
@@ -226,7 +234,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       return memberName;
     }
 
-    return 'Member';
+    return 'सदस्य';
   }
 
   String _formatMonth(String? value) {
@@ -234,34 +242,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       return value ?? '';
     }
 
-    final parts = value.split('-');
-
-    if (parts.length != 2) {
-      return value;
-    }
-
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-
-    final month = int.tryParse(parts[1]);
-
-    if (month == null || month < 1 || month > 12) {
-      return value;
-    }
-
-    return '${months[month - 1]} ${parts[0]}';
+    return MarathiConstants.formatMonthKey(value);
   }
 
   @override
@@ -272,12 +253,12 @@ class _ReportsScreenState extends State<ReportsScreen>
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title: const Text(
-          'Reports',
+          'अहवाल',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         actions: [
           IconButton(
-            tooltip: 'Refresh',
+            tooltip: 'रिफ्रेश करा',
             onPressed: _isLoading ? null : _loadReports,
             icon: const Icon(Icons.refresh),
           ),
@@ -316,7 +297,7 @@ class _ReportsScreenState extends State<ReportsScreen>
               children: [
                 Expanded(
                   child: _DateFilterButton(
-                    label: 'Start Date',
+                    label: 'सुरुवात तारीख',
                     value: _displayDate(_startDate),
                     icon: Icons.calendar_today,
                     onTap: _selectStartDate,
@@ -325,7 +306,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                 const SizedBox(width: 10),
                 Expanded(
                   child: _DateFilterButton(
-                    label: 'End Date',
+                    label: 'समाप्ती तारीख',
                     value: _displayDate(_endDate),
                     icon: Icons.event,
                     onTap: _selectEndDate,
@@ -340,7 +321,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                 child: TextButton.icon(
                   onPressed: _clearFilters,
                   icon: const Icon(Icons.clear),
-                  label: const Text('Clear Filters'),
+                  label: const Text('फिल्टर काढा'),
                   style: TextButton.styleFrom(foregroundColor: Colors.white),
                 ),
               ),
@@ -367,11 +348,11 @@ class _ReportsScreenState extends State<ReportsScreen>
               isScrollable: true,
               tabAlignment: TabAlignment.start,
               tabs: [
-                Tab(icon: Icon(Icons.account_balance), text: 'Financial'),
-                Tab(icon: Icon(Icons.volunteer_activism), text: 'Donations'),
-                Tab(icon: Icon(Icons.receipt_long), text: 'Expenses'),
-                Tab(icon: Icon(Icons.people), text: 'Members'),
-                Tab(icon: Icon(Icons.calendar_month), text: 'Monthly'),
+                Tab(icon: Icon(Icons.account_balance), text: 'वित्तीय'),
+                Tab(icon: Icon(Icons.volunteer_activism), text: 'देणग्या'),
+                Tab(icon: Icon(Icons.receipt_long), text: 'खर्च'),
+                Tab(icon: Icon(Icons.people), text: 'सदस्य'),
+                Tab(icon: Icon(Icons.calendar_month), text: 'मासिक'),
               ],
             ),
           ),
@@ -403,33 +384,33 @@ class _ReportsScreenState extends State<ReportsScreen>
       padding: const EdgeInsets.all(12),
       children: [
         _ReportAmountCard(
-          title: 'Total Donations',
+          title: 'एकूण देणगी',
           amount: donations,
           icon: Icons.volunteer_activism,
         ),
         _ReportAmountCard(
-          title: 'Total Expenses',
+          title: 'एकूण खर्च',
           amount: expenses,
           icon: Icons.receipt_long,
         ),
         _ReportAmountCard(
-          title: 'Balance',
+          title: 'शिल्लक',
           amount: balance,
           icon: Icons.account_balance_wallet,
         ),
         const SizedBox(height: 10),
         _ReportCountCard(
-          title: 'Donation Transactions',
+          title: 'देणगी व्यवहार',
           count: _donations.length,
           icon: Icons.payments,
         ),
         _ReportCountCard(
-          title: 'Expense Transactions',
+          title: 'खर्च व्यवहार',
           count: _expenses.length,
           icon: Icons.receipt,
         ),
         _ReportCountCard(
-          title: 'Other Donor Records',
+          title: 'इतर देणगीदार नोंदी',
           count: _otherDonors.length,
           icon: Icons.person_outline,
         ),
@@ -439,7 +420,10 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Widget _buildDonationReport() {
     if (_donations.isEmpty) {
-      return _emptyReport('No donations found', Icons.volunteer_activism);
+      return _emptyReport(
+        'कोणत्याही देणग्या आढळल्या नाहीत',
+        Icons.volunteer_activism,
+      );
     }
 
     return ListView.builder(
@@ -459,7 +443,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           title: _donorName(row),
           amount: _formatAmount(amount),
           date: _formatDate(row['date'] as String?),
-          badge: monthly ? 'Monthly Donation' : null,
+          badge: monthly ? 'मासिक देणगी' : null,
           note: note,
         );
       },
@@ -468,7 +452,7 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Widget _buildExpenseReport() {
     if (_expenses.isEmpty) {
-      return _emptyReport('No expenses found', Icons.receipt_long);
+      return _emptyReport('कोणताही खर्च आढळला नाही', Icons.receipt_long);
     }
 
     return ListView.builder(
@@ -487,7 +471,7 @@ class _ReportsScreenState extends State<ReportsScreen>
           icon: Icons.receipt_long,
           title: category != null && category.trim().isNotEmpty
               ? category
-              : 'Expense',
+              : 'खर्च',
           amount: _formatAmount(amount),
           date: _formatDate(row['date'] as String?),
           note: note,
@@ -498,7 +482,10 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Widget _buildMemberReport() {
     if (_memberWise.isEmpty) {
-      return _emptyReport('No member donations found', Icons.people);
+      return _emptyReport(
+        'कोणत्याही सदस्य देणग्या आढळल्या नाहीत',
+        Icons.people,
+      );
     }
 
     return ListView.builder(
@@ -511,7 +498,7 @@ class _ReportsScreenState extends State<ReportsScreen>
 
         final count = (row['donation_count'] as num).toInt();
 
-        final memberName = row['member_name'] as String? ?? 'Member';
+        final memberName = row['member_name'] as String? ?? 'सदस्य';
 
         return Card(
           color: Colors.black.withValues(alpha: 0.84),
@@ -544,8 +531,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        '$count donation'
-                        '${count == 1 ? '' : 's'}',
+                        '$count देणगी नोंदी',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.70),
                         ),
@@ -572,7 +558,10 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Widget _buildMonthlyReport() {
     if (_monthly.isEmpty && _otherDonors.isEmpty) {
-      return _emptyReport('No monthly data found', Icons.calendar_month);
+      return _emptyReport(
+        'कोणताही मासिक डेटा आढळला नाही',
+        Icons.calendar_month,
+      );
     }
 
     return ListView(
@@ -581,7 +570,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         if (_monthly.isNotEmpty) ...[
           const _SectionTitle(
             icon: Icons.calendar_month,
-            title: 'Monthly Donations',
+            title: 'मासिक देणग्या',
           ),
           const SizedBox(height: 8),
           ..._monthly.map((row) {
@@ -613,8 +602,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                   ),
                 ),
                 subtitle: Text(
-                  '$count donation'
-                  '${count == 1 ? '' : 's'}',
+                  '$count देणगी नोंदी',
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.70)),
                 ),
                 trailing: Text(
@@ -629,10 +617,12 @@ class _ReportsScreenState extends State<ReportsScreen>
           }),
         ],
         const SizedBox(height: 8),
-        const _SectionTitle(icon: Icons.person_outline, title: 'Other Donors'),
+        const _SectionTitle(icon: Icons.person_outline, title: 'इतर देणगीदार'),
         const SizedBox(height: 8),
         if (_otherDonors.isEmpty)
-          _simpleMessageCard('No other-donor donations found.')
+          _simpleMessageCard(
+            'कोणत्याही इतर देणगीदारांच्या देणग्या आढळल्या नाहीत.',
+          )
         else
           ..._otherDonors.map((row) {
             final amount = (row['total_amount'] as num).toDouble();
@@ -663,8 +653,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                   ),
                 ),
                 subtitle: Text(
-                  '$count donation'
-                  '${count == 1 ? '' : 's'}',
+                  '$count देणगी नोंदी',
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.70)),
                 ),
                 trailing: Text(
@@ -725,7 +714,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         const SizedBox(height: 8),
         Center(
           child: Text(
-            'Try changing the selected date range.',
+            'निवडलेली तारीख श्रेणी बदलून पहा.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white.withValues(alpha: 0.60)),
           ),
