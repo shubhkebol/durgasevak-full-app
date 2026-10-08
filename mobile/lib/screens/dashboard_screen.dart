@@ -16,6 +16,7 @@ import 'data_sync_screen.dart';
 import 'donation_payment_details_screen.dart';
 import 'donations_screen.dart';
 import 'expenses_screen.dart';
+import 'login_screen.dart';
 import 'members_screen.dart';
 import 'missed_donations_screen.dart';
 import 'mohim_screen.dart';
@@ -387,8 +388,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await _loadDashboard();
   }
 
-  void _logout() {
-    Navigator.of(context).pop();
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout, color: Colors.deepOrange),
+            SizedBox(width: 10),
+            Text('लॉगआउट करा'),
+          ],
+        ),
+        content: const Text(
+          'तुम्हाला खात्री आहे की तुम्हाला खात्यातून बाहेर पडायचे (Logout करायचे) आहे?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: const Text('रद्द करा', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepOrange,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('लॉगआउट'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await AuthService().logout();
+
+    if (!mounted) return;
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   String _money(double value) {

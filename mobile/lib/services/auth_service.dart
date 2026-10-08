@@ -1,4 +1,5 @@
 import '../database/database_service.dart';
+import 'sync_metadata_service.dart';
 
 class AuthUser {
   final int id;
@@ -52,6 +53,8 @@ class AuthService {
       limit: 1,
     );
 
+    AuthUser? user;
+
     if (results.isEmpty) {
       // Auto-insert Admin if role is editor and password matched
       if (username == 'Admin') {
@@ -60,17 +63,69 @@ class AuthService {
           'role': 'editor',
           'active': 1,
         });
-        return AuthUser(id: id, username: username, role: 'editor');
+        user = AuthUser(id: id, username: username, role: 'editor');
       }
-      return null;
+    } else {
+      final row = results.first;
+      user = AuthUser(
+        id: row['id'] as int,
+        username: row['username'] as String,
+        role: row['role'] as String,
+      );
     }
 
-    final row = results.first;
+    if (user != null) {
+      // Persist session locally so user stays logged in
+      await SyncMetadataService.instance.set('active_session_username', username);
+    }
 
-    return AuthUser(
-      id: row['id'] as int,
-      username: row['username'] as String,
-      role: row['role'] as String,
-    );
+    return user;
+  }
+
+  /// Retrieve the currently active saved user session if one exists
+  Future<AuthUser?> getSavedSession() async {
+    try {
+      final username =
+          await SyncMetadataService.instance.get('active_session_username');
+      if (username == null || username.trim().isEmpty) {
+        return null;
+      }
+
+      final db = await _databaseService.database;
+      final results = await db.query(
+        'users',
+        where: 'username = ? AND active = 1',
+        whereArgs: [username.trim()],
+        limit: 1,
+      );
+
+      if (results.isEmpty) {
+        if (username.trim() == 'Admin') {
+          final id = await db.insert('users', {
+            'username': 'Admin',
+            'role': 'editor',
+            'active': 1,
+          });
+          return AuthUser(id: id, username: 'Admin', role: 'editor');
+        }
+        return null;
+      }
+
+      final row = results.first;
+      return AuthUser(
+        id: row['id'] as int,
+        username: row['username'] as String,
+        role: row['role'] as String,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Clear the active user session upon intentional logout
+  Future<void> logout() async {
+    try {
+      await SyncMetadataService.instance.remove('active_session_username');
+    } catch (_) {}
   }
 }
