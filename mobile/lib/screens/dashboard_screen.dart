@@ -13,6 +13,7 @@ import '../services/sync_metadata_service.dart';
 import '../widgets/app_background.dart';
 import 'committee_screen.dart';
 import 'data_sync_screen.dart';
+import 'donation_payment_details_screen.dart';
 import 'donations_screen.dart';
 import 'expenses_screen.dart';
 import 'members_screen.dart';
@@ -656,6 +657,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'सदस्य',
         Icons.people_outline,
         () => _open(MembersScreen(user: widget.user)),
+      ),
+      _Module(
+        'UPI व बँक तपशील',
+        Icons.qr_code_2,
+        () => _open(DonationPaymentDetailsScreen(user: widget.user)),
       ),
       _Module(
         'देणग्या',

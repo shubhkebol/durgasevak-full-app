@@ -56,7 +56,7 @@ class _AdminSelectionSheetState extends State<AdminSelectionSheet> {
           _admins = contacts.where((c) {
             final name = c.name.trim().toLowerCase();
             final phone = c.mobile.replaceAll(RegExp(r'\D'), '');
-            return name != 'shubham' && !phone.endsWith('8390161840');
+            return !name.contains('shubham') && !phone.endsWith('8390161840');
           }).toList();
         } else {
           // For asking cloud access: Show all admins including Shubham

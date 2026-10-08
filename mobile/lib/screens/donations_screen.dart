@@ -12,6 +12,7 @@ import '../services/auth_service.dart';
 
 import '../utils/marathi_constants.dart';
 import '../widgets/app_background.dart';
+import 'donation_payment_details_screen.dart';
 import 'missed_donations_screen.dart';
 
 class DonationsScreen extends StatefulWidget {
@@ -291,6 +292,17 @@ class _DonationsScreenState extends State<DonationsScreen> {
               icon: const Icon(Icons.filter_alt_off),
             ),
           IconButton(
+            tooltip: 'UPI बारकोड व बँक तपशील (देणगी भरा)',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => DonationPaymentDetailsScreen(user: widget.user),
+                ),
+              );
+            },
+            icon: const Icon(Icons.qr_code_2),
+          ),
+          IconButton(
             tooltip: 'प्रलंबित मासिक देणग्या',
             onPressed: () {
               Navigator.of(context).push(
@@ -308,7 +320,77 @@ class _DonationsScreenState extends State<DonationsScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          DonationPaymentDetailsScreen(user: widget.user),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.deepOrange.withAlpha(25),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.deepOrange.withAlpha(80)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: Colors.deepOrange,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.qr_code_scanner,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'UPI बारकोड व बँक तपशील (Pay Now)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              widget.user.isAdmin
+                                  ? 'बारकोड, UPI ID व बँक तपशील संपादित करा'
+                                  : 'QR स्कॅन करा किंवा थेट UPI द्वारे देणगी भरा',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 14,
+                        color: Colors.orange,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
 
               child: TextField(
                 controller: _searchController,
