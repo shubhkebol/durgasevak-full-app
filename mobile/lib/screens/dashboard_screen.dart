@@ -10,6 +10,7 @@ import '../services/database_backup_service.dart';
 import '../services/file_intent_service.dart';
 import '../services/google_drive_service.dart';
 import '../services/sync_metadata_service.dart';
+import '../services/theme_service.dart';
 import '../widgets/app_background.dart';
 import 'committee_screen.dart';
 import 'data_sync_screen.dart';
@@ -392,7 +393,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
@@ -401,14 +401,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text('लॉगआउट करा'),
           ],
         ),
-        content: const Text(
+        content: Text(
           'तुम्हाला खात्री आहे की तुम्हाला खात्यातून बाहेर पडायचे (Logout करायचे) आहे?',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(
+            color: Theme.of(dialogCtx).colorScheme.onSurfaceVariant,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: const Text('रद्द करा', style: TextStyle(color: Colors.grey)),
+            child: const Text('रद्द करा'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(dialogCtx).pop(true),
@@ -477,6 +479,179 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return name;
   }
 
+  void _showThemeSelectionSheet(BuildContext context) {
+    final themeService = ThemeService.instance;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final activeMode = themeService.currentThemeMode;
+            final theme = Theme.of(context);
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: theme.dividerColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.deepOrange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.palette_outlined,
+                            color: Colors.deepOrange,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'थीम निवडा',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            Text(
+                              'अ‍ॅपचे स्वरूप तुमच्या आवडीनुसार बदला',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    _buildThemeOptionTile(
+                      context: context,
+                      mode: ThemeMode.dark,
+                      title: 'गड रात्री (Dark Mode)',
+                      subtitle: 'काळा बॅकग्राउंड, रात्रीच्या वेळी डोळ्यांसाठी आरामदायक',
+                      icon: Icons.dark_mode_outlined,
+                      isSelected: activeMode == ThemeMode.dark,
+                      onTap: () {
+                        themeService.setThemeMode(ThemeMode.dark);
+                        Navigator.of(bottomSheetContext).pop();
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _buildThemeOptionTile(
+                      context: context,
+                      mode: ThemeMode.light,
+                      title: 'दिवस (Light Mode)',
+                      subtitle: 'स्वच्छ व उजळ बॅकग्राउंड, स्पष्ट वाचन',
+                      icon: Icons.light_mode_outlined,
+                      isSelected: activeMode == ThemeMode.light,
+                      onTap: () {
+                        themeService.setThemeMode(ThemeMode.light);
+                        Navigator.of(bottomSheetContext).pop();
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _buildThemeOptionTile(
+                      context: context,
+                      mode: ThemeMode.system,
+                      title: 'फोन सिस्टीमप्रमाणे (System Default)',
+                      subtitle: 'तुमच्या फोनच्या सेटिंग्जनुसार आपोआप बदलेल',
+                      icon: Icons.brightness_auto_outlined,
+                      isSelected: activeMode == ThemeMode.system,
+                      onTap: () {
+                        themeService.setThemeMode(ThemeMode.system);
+                        Navigator.of(bottomSheetContext).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildThemeOptionTile({
+    required BuildContext context,
+    required ThemeMode mode,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(
+          color: isSelected ? Colors.deepOrange : theme.dividerColor,
+          width: isSelected ? 1.8 : 1.0,
+        ),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Colors.deepOrange.withValues(alpha: 0.15)
+                : theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: isSelected ? Colors.deepOrange : theme.colorScheme.onSurfaceVariant,
+            size: 22,
+          ),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+            color: isSelected ? Colors.deepOrange : theme.colorScheme.onSurface,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 12,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        trailing: isSelected
+            ? const Icon(Icons.check_circle, color: Colors.deepOrange)
+            : Icon(Icons.circle_outlined, color: theme.colorScheme.outline),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final summary = _summary;
@@ -502,10 +677,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: _isLoading ? null : _loadDashboard,
             icon: const Icon(Icons.refresh),
           ),
-          IconButton(
-            tooltip: 'लॉगआउट',
-            onPressed: _logout,
-            icon: const Icon(Icons.logout),
+          PopupMenuButton<String>(
+            tooltip: 'पर्याय (Options)',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'theme') {
+                _showThemeSelectionSheet(context);
+              } else if (value == 'logout') {
+                _logout();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem<String>(
+                value: 'theme',
+                child: Row(
+                  children: [
+                    Icon(Icons.palette_outlined, size: 20, color: Colors.deepOrange),
+                    SizedBox(width: 12),
+                    Text('थीम बदला (Theme)'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem<String>(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, size: 20, color: Colors.redAccent),
+                    SizedBox(width: 12),
+                    Text('लॉगआउट (Logout)'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -528,11 +732,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 120),
                     const Icon(Icons.error_outline, size: 64),
                     const SizedBox(height: 16),
-                    const Center(
+                    Center(
                       child: Text(
                         'डॅशबोर्ड लोड करण्यात अडचण आली',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -586,15 +790,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'पुन्हा स्वागत आहे',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 14,
+                ),
               ),
               const SizedBox(height: 3),
               Text(
                 widget.user.username,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
@@ -637,9 +844,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'सक्रिय देणग्या उणे सक्रिय खर्च',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -749,10 +958,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'विभाग',
           style: TextStyle(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
@@ -872,8 +1081,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),

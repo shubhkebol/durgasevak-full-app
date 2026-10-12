@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'database/database_service.dart';
 import 'screens/splash_screen.dart';
 import 'services/file_intent_service.dart';
+import 'services/theme_service.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await DatabaseService.instance.database;
+  await ThemeService.instance.init();
 
   final initialFile = await FileIntentService.getInitialFile();
 
@@ -25,32 +28,18 @@ class DurgasevakApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'दुर्गसेवक',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Mukta',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepOrange,
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: Colors.black,
-        useMaterial3: true,
-        inputDecorationTheme: const InputDecorationTheme(
-          filled: true,
-          fillColor: Color(0xFF171717),
-          labelStyle: TextStyle(color: Colors.white70),
-          hintStyle: TextStyle(color: Colors.white54),
-          prefixIconColor: Colors.white70,
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.white38),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.deepOrange),
-          ),
-        ),
-      ),
-      home: const SplashScreen(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeService.instance.themeModeNotifier,
+      builder: (context, currentThemeMode, _) {
+        return MaterialApp(
+          title: 'दुर्गसेवक',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: currentThemeMode,
+          home: const SplashScreen(),
+        );
+      },
     );
   }
 }
