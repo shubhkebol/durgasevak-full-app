@@ -54,8 +54,8 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _handleNavigation() async {
-    // Show splash screen logo for 1.8 seconds
-    final splashDelay = Future.delayed(const Duration(milliseconds: 1800));
+    // Show splash screen logo for 2.0 seconds
+    final splashDelay = Future.delayed(const Duration(milliseconds: 2000));
 
     // Check saved session in parallel
     final savedUserFuture = _authService.getSavedSession();
@@ -119,28 +119,16 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Glowing circular logo container
-                Container(
-                  width: 175,
-                  height: 175,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.deepOrange.withAlpha(180),
-                      width: 2.5,
+                // Hexagonal / Rajmudra shaped logo container
+                SizedBox(
+                  width: 190,
+                  height: 196,
+                  child: ClipPath(
+                    clipper: const HexagonLogoClipper(),
+                    child: Image.asset(
+                      'assets/images/durgasevak_watermark.jpg',
+                      fit: BoxFit.contain,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.deepOrange.withAlpha(100),
-                        blurRadius: 28,
-                        spreadRadius: 4,
-                      ),
-                    ],
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Image.asset(
-                    'assets/images/Durgasevak.jpeg',
-                    fit: BoxFit.cover,
                   ),
                 ),
 
@@ -160,7 +148,7 @@ class _SplashScreenState extends State<SplashScreen>
                 const SizedBox(height: 8),
 
                 const Text(
-                  'दुर्ग संवर्धन व व्यवस्थापन प्रणाली',
+                  '|| देव देश धर्म ||',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white70,
@@ -189,4 +177,33 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
   }
+}
+
+/// Helper that builds the polygonal/hexagonal Rajmudra path
+/// matching the exact outer contour of the Durgasevak emblem.
+Path _buildPolygonPath(Size size) {
+  final w = size.width;
+  final h = size.height;
+  final path = Path();
+  path.moveTo(w * 0.28, h * 0.01);
+  path.lineTo(w * 0.72, h * 0.01);
+  path.lineTo(w * 0.995, h * 0.26);
+  path.lineTo(w * 0.995, h * 0.74);
+  path.lineTo(w * 0.72, h * 0.995);
+  path.lineTo(w * 0.28, h * 0.995);
+  path.lineTo(w * 0.005, h * 0.74);
+  path.lineTo(w * 0.005, h * 0.26);
+  path.close();
+  return path;
+}
+
+/// Clipper that precisely shapes the logo along its hexagonal/Rajmudra contour.
+class HexagonLogoClipper extends CustomClipper<Path> {
+  const HexagonLogoClipper();
+
+  @override
+  Path getClip(Size size) => _buildPolygonPath(size);
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
